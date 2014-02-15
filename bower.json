@@ -1,0 +1,17 @@
+{
+  "name": "circular",
+  "main": "circular.js",
+  "version": "0.1.0",
+  "authors": [
+    "Mathias Kahl <mathias.kahl@gmail.com>"
+  ],
+  "description": "A lightweight angularjs inspired binding library intended to be used with server generated templates",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
