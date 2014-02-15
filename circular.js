@@ -65,6 +65,7 @@ var Circular = (function() {
     function Controller(element, parentContext) {
         this.element = element
 
+        // check if the user defined constructor defined an initial context dictionary
         if (typeof this.context != "undefined" && Object.keys(this.context).length > 0) {
             var init = this.context
             this.context = new Context(parentContext)
@@ -74,6 +75,15 @@ var Circular = (function() {
             }
         } else {
             this.context = new Context(parentContext)
+        }
+
+        // optionally load user defined context data from a script tag below the controller
+        var script = element.querySelector("script[type='application/json']")
+        if (script != null) {
+            var data = JSON.parse(script.innerText)
+            for (key in data) {
+                this.context[key] = data[key]
+            }
         }
     }
 
