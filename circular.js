@@ -99,30 +99,31 @@ var Circular = (function() {
             // if yes, just add the binding
             this["_"+property].addBinding(binding)
             binding.update(this, this[property], this[property])
-        } else if (property in this) {
-            // otherwise we have to create it first
-            var p = new Property(this, property, this[property])
-            p.addBinding(binding)
-            binding.update(this, undefined, this[property])
-
-            // save it as a hidden property using the name prepended with underscore
-            Object.defineProperty(this, "_"+property, {
-                configurable: true,
-                enumerable: false,
-                value: p,
-                writable: true
-            })
-
-            // replace the existing property with an accessor to the hidden property
-            Object.defineProperty(this, property, {
-                configurable: true,
-                enumerable: true,
-                get: p.getValue.bind(p),
-                set: p.setValue.bind(p)
-            })
-        } else {
-            throw new Error("Property '" + property + "' not defined in this context")
+            return
         }
+
+        // if not create the new background property
+        var p = new Property(this, property, property in this ? this[property] : undefined)
+        p.addBinding(binding)
+
+        // if the context defines an initial value, update the binding with it
+        if (p.getValue() != undefined) binding.update(this, undefined, p.getValue())
+
+        // save it as a hidden property using the name prepended with underscore
+        Object.defineProperty(this, "_"+property, {
+            configurable: true,
+            enumerable: false,
+            value: p,
+            writable: true
+        })
+
+        // replace the existing property with an accessor to the hidden property
+        Object.defineProperty(this, property, {
+            configurable: true,
+            enumerable: true,
+            get: p.getValue.bind(p),
+            set: p.setValue.bind(p)
+        })
     }
 
     Circular.prototype.Context = Context
@@ -172,6 +173,7 @@ var Circular = (function() {
 
     /**
      * Attaches this binding to the nearest controller.
+     * @return Controller the controller it was attached to
      */
     Binding.prototype.attach = function() {
         var controller = findParentController(this.element)
@@ -181,6 +183,8 @@ var Circular = (function() {
             var symbol = this.expression.symbols[i]
             controller.context.addBinding(symbol, this)
         }
+
+        return controller
     }
 
     //--
@@ -210,7 +214,13 @@ var Circular = (function() {
             var exprText = elements[i].getAttribute("bind-content")
             var expr = new BindingExpression(exprText)
             var binding = new ContentBinding(expr, elements[i])
-            binding.attach()
+            var controller = binding.attach()
+
+            // if the content binding only references one symbol and has no prior definition,
+            // just initialize it with the statically generated content of the element
+            if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
+                controller.context[expr.symbols[0]] = elements[i].innerHTML
+            }
         }
     }
 
