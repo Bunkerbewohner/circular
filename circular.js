@@ -98,10 +98,12 @@ var Circular = (function() {
         if ("_"+property in this) {
             // if yes, just add the binding
             this["_"+property].addBinding(binding)
+            binding.update(this, this[property], this[property])
         } else if (property in this) {
             // otherwise we have to create it first
             var p = new Property(this, property, this[property])
             p.addBinding(binding)
+            binding.update(this, undefined, this[property])
 
             // save it as a hidden property using the name prepended with underscore
             Object.defineProperty(this, "_"+property, {
