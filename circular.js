@@ -1,11 +1,63 @@
 /**
  * circular.js
  *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Mathias Kahl <mathias.kahl@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 var Circular = (function() {
     function Circular() {
+        this.controllers = {}
+        document.addEventListener("DOMContentLoaded", this.init)
+    }
 
+    /**
+     * Carries out all necessary initializations, such as:
+     *  - setting up controllers
+     *  - initializing bindings
+     */
+    Circular.prototype.init = function() {
+        // initialize all the controllers
+        var elements = document.querySelectorAll("*[controller]")
+        for (var i = 0; i < elements.length; i++) {
+            var name = elements[i].getAttribute("controller")
+            var klass = this.controllers[name]
+            elements[i]._controller = new klass()
+            Controller.call(elements[i]._controller, elements[i])
+        }
+
+        // initialize all bindings
+        ContentBinding.setup()
+    }
+
+    Circular.prototype.controller = function(name, klass) {
+        this.controllers[name] = klass
+    }
+
+    /*============= Controller =======================================================================================*/
+
+    function Controller(element) {
+        this.element = element
+        this.context = new Context()
     }
 
     /*============= Context ==========================================================================================*/
@@ -97,8 +149,20 @@ var Circular = (function() {
         // is called when the property value was changed
     }
 
+    /**
+     * Attaches this binding to the nearest controller.
+     */
+    Binding.prototype.attach = function() {
+        // TODO: implement
+    }
+
     //--
 
+    /**
+     * Binds the content of an HTML element to a property
+     * @param element DOMElement
+     * @constructor
+     */
     function ContentBinding(element) {
         Binding.call(this)
         this.element = element
@@ -110,6 +174,24 @@ var Circular = (function() {
         this.element.innerHTML = newValue
     }
 
+    /**
+     * Searches for content binding declarations and sets up the bindings.
+     */
+    ContentBinding.setup = function() {
+        var decls = document.querySelectorAll("*[bind-content]")
+        for (var i = 0; i < decls.length; i++) {
+            var exprText = decls[i].getAttribute("bind-content")
+            var expr = new BindingExpression(exprText)
+        }
+    }
+
+    //--
+
+    /*============= Binding expressions ==============================================================================*/
+
+    function BindingExpression(str) {
+
+    }
 
     return Circular
 })()

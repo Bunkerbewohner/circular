@@ -3,12 +3,23 @@
 <head>
     <title>Basic Circular.js example</title>
     <script src="../circular.js"></script>
+    <script>
+        Circular.controller("BodyCtrl", function() {
+            this.model = {
+                name: "Mathias"
+            }
+        })
+    </script>
 </head>
-<body>
+<body controller="BodyCtrl">
 
     <h1>Basic Circular.js</h1>
 
-    <p>Hello, World!</p>
+    <p>Hello, <span bind-content="name">...</span>!</p>
+
+    <div controller="ChildCtrl">
+        <p>Your name is <span bind-content="name">...</span>, and you are <span bind-content="age">...</span> years old.</p>
+    </div>
 
 </body>
 </html>
