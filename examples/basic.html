@@ -5,8 +5,14 @@
     <script src="../circular.js"></script>
     <script>
         Circular.controller("BodyCtrl", function() {
-            this.model = {
+            this.context = {
                 name: "Mathias"
+            }
+        })
+
+        Circular.controller("ChildCtrl", function() {
+            this.context = {
+                age: 26
             }
         })
     </script>
