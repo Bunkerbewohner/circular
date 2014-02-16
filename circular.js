@@ -211,9 +211,9 @@ var Circular = (function() {
     //--
 
     /**
-     * Binds the content of an HTML element to a property
+     * Binds the content of an HTML element to an expression
      * @param element DOMElement
-     * @param expression Expression (optional)
+     * @param expression Binding Expression
      * @constructor
      */
     function ContentBinding(expression, element) {
@@ -256,6 +256,13 @@ var Circular = (function() {
 
     //--
 
+    /**
+     * Binds the value of an expression to a specific CSS style (set via the style attribute).
+     * @param expression compiled binding expression
+     * @param element HTML element
+     * @param style CSS style name
+     * @constructor
+     */
     function StyleBinding(expression, element, style) {
         Binding.call(this, expression, element)
         this.style = style
