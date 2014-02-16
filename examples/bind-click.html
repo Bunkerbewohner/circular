@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>bind-click example</title>
+    <script src="../circular.js"></script>
+    <script>
+        Circular.controller("Main", function() {
+            this.context = {
+                message: function() {
+                    alert("Hello, World!")
+
+                    // "this" is bound to the context;
+                    // "alerts" is implicitly created in the HTML below
+                    this.alerts++
+                }
+            }
+        })
+    </script>
+</head>
+<body controller="Main">
+
+<p>
+    <button bind-click="message()">Click Me</button>
+
+    (Num. Alerts: <span bind-content="alerts">0</span>)
+</p>
+
+</body>
+</html>

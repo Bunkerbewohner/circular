@@ -281,7 +281,12 @@ var Circular = (function() {
             if (!(symbol in context))
                 throw new Error("Unknown property '" + symbol + "' in expression '" + this.str + "'")
 
-            expr = expr.replace(symbol, "context."+symbol)
+            if (typeof context[symbol] == "function") {
+                var __call__ = context[symbol].bind(context)
+                expr = expr.replace(symbol, "__call__")
+            } else {
+                expr = expr.replace(symbol, "context."+symbol)
+            }
         }
 
         return eval(expr)
