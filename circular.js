@@ -59,6 +59,7 @@ var Circular = (function() {
 
         // initialize all bindings
         ContentBinding.setup(this)
+        StyleBinding.setup(this)
         ClickAction.setup(this)
     }
 
@@ -229,6 +230,7 @@ var Circular = (function() {
      * Searches for content binding declarations and sets up the bindings.
      */
     ContentBinding.setup = function(circular) {
+        // TODO: Refactor binding setups
         var elements = document.querySelectorAll("*[bind-content]")
         for (var i = 0; i < elements.length; i++) {
             var exprText = elements[i].getAttribute("bind-content")
@@ -239,12 +241,67 @@ var Circular = (function() {
             // if the content binding only references one symbol and has no prior definition,
             // just initialize it with the statically generated content of the element
             if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
-                controller.context[expr.symbols[0]] = elements[i].innerHTML
+                var init = elements[i].innerHTML.trim()
+
+                // check if it's a number
+                var match = init.match(/^(\d+(\.\d+)?)(%)?$/)
+                if (match != null) {
+                    init = parseFloat(match[1])
+                }
+
+                controller.context[expr.symbols[0]] = init
             }
         }
     }
 
     //--
+
+    function StyleBinding(expression, element, style) {
+        Binding.call(this, expression, element)
+        this.style = style
+    }
+    StyleBinding.prototype = new Binding()
+    Circular.prototype.StyleBinding = StyleBinding
+
+    StyleBinding.prototype.update = function(context, oldValue, newValue) {
+        this.element.style[this.style] = this.expression.evaluate(context)
+    }
+
+    StyleBinding.setup = function(circular) {
+        var elements = document.querySelectorAll("*[bind-style]")
+        for (var i = 0; i < elements.length; i++) {
+            // expecting an object literal assigning expressions to css properties
+            var text = elements[i].getAttribute("bind-style")
+            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+                value = value.replace(/([^\\])"/g, "$1\\\"")
+                return ":\"" + value + "\"" + delim
+            })
+            var dict = eval("(" + text + ")")
+
+            for (var key in dict) {
+                var expr = new BindingExpression(dict[key])
+                var binding = new StyleBinding(expr, elements[i], key)
+                var controller = binding.attach()
+
+                // if the referenced property is undefined, attempt to initialize it from HTML template
+                if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
+                    if (elements[i].style[key] != "") {
+                        var init = elements[i].style[key]
+
+                        // check if the value is a number
+                        var match = init.match(/(\d+(\.\d+)?)(px|em|%|pt)$/)
+                        if (match != null) {
+                            init = parseFloat(match[1])
+                        }
+
+                        controller.context[expr.symbols[0]] = init
+                    }
+                }
+            }
+        }
+    }
+
+    /*============= Actions ==========================================================================================*/
 
     function ClickAction(expression, element) {
         var ctrl = findParentController(element)
@@ -301,7 +358,10 @@ var Circular = (function() {
         if (matches == null) throw new Error("no symbols found in expr '" + this.str + "'")
         for (var i = 0; i < matches.length; i++) {
             var symbol = matches[i].trim().replace(/(^\W)|(\W$)/g, "")
+
             if (symbol in ["and", "or"] || symbol in symbols) continue
+            if (symbol.match(/^\d+(\.\d+)?$/)) continue
+
             symbols.push(symbol)
         }
         return symbols

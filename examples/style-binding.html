@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Style Binding</title>
+    <script src="../circular.js"></script>
+    <style type="text/css">
+        .progress {
+            height: 30px;
+            margin: 10px;
+            width: 200px;
+            border: 1px solid #888;
+            background-color: #eee;
+        }
+
+        .progress-bar {
+            height: 30px;
+            background-color: cornflowerblue;
+            text-align: left;
+            line-height: 30px;
+            overflow: visible;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress">
+        <!-- bind-style creates the property "progress" and binds the expression "progress + '%'" to the "width" style.
+             The property value is automatically initialized from the currently set style value.
+             Values with units such as %, em, pt, and px are automatically converted to numbers. -->
+        <div class="progress-bar" style="width: 50%" bind-style="{width: progress+'%'}">
+            &nbsp;Loading...
+         </div>
+    </div>
+
+    <!-- the buttons manipulate the implicitly created numeric progress property -->
+    <button bind-click="progress -= 10">Dec</button>
+    <button bind-click="progress += 10">Inc</button>
+
+
+</body>
+</html>
