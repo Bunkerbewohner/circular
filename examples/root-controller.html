@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Basic Circular.js example</title>
+    <script src="../circular.js"></script>
+    <style type="text/css">
+        body {
+            font-family: Tahoma, sans-serif;
+            padding: 10px;
+            margin: 0;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        .result {
+            margin: 0px;
+            font-size: 28px;
+            background-color: #eee;
+            padding: 10px;
+            width: 200px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Calculator</h1>
+
+<p>This calculator uses the implicitly defined root controller and an implicit property "number".</p>
+
+<div class="result">
+    <span style="font-weight: bold;" bind-content="number">0</span><br>
+
+    <div class="controls">
+        <!-- binding a click to an arbitrary property expression -->
+        <button bind-click="number--">-1</button>
+
+        <!-- analogous plain JavaScript code -->
+        <button onclick="Circular.getRootController().context.number++">+1</button>
+    </div>
+</div>
+
+</body>
+</html>

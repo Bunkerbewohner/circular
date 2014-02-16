@@ -27,7 +27,12 @@
 var Circular = (function() {
     function Circular() {
         this.controllers = {}
-        this.rootContext = new Context()
+
+        // root controller
+        var html = document.querySelector("html")
+        html._controller = new Controller(html)
+        this.rootController = html._controller
+
         document.addEventListener("DOMContentLoaded", this.init.bind(this))
     }
 
@@ -47,17 +52,22 @@ var Circular = (function() {
             elements[i]._controller = new klass()
 
             var parentController = findParentController(elements[i])
-            var parentContext = parentController != null ? parentController.context : this.rootContext
+            var parentContext = parentController != null ? parentController.context : this.rootController.context
 
             Controller.call(elements[i]._controller, elements[i], parentContext)
         }
 
         // initialize all bindings
-        ContentBinding.setup()
+        ContentBinding.setup(this)
+        ClickAction.setup(this)
     }
 
     Circular.prototype.controller = function(name, klass) {
         this.controllers[name] = klass
+    }
+
+    Circular.prototype.getRootController = function() {
+        return this.rootController
     }
 
     /*============= Controller =======================================================================================*/
@@ -218,7 +228,7 @@ var Circular = (function() {
     /**
      * Searches for content binding declarations and sets up the bindings.
      */
-    ContentBinding.setup = function() {
+    ContentBinding.setup = function(circular) {
         var elements = document.querySelectorAll("*[bind-content]")
         for (var i = 0; i < elements.length; i++) {
             var exprText = elements[i].getAttribute("bind-content")
@@ -235,6 +245,22 @@ var Circular = (function() {
     }
 
     //--
+
+    function ClickAction(expression, element) {
+        var ctrl = findParentController(element)
+
+        element.addEventListener("click", function() {
+            expression.evaluate(ctrl.context)
+        })
+    }
+
+    ClickAction.setup = function(circular) {
+        var elements = document.querySelectorAll("*[bind-click]")
+        for (var i = 0; i < elements.length; i++) {
+            var expr = new BindingExpression(elements[i].getAttribute("bind-click"))
+            var action = new ClickAction(expr, elements[i])
+        }
+    }
 
     /*============= Binding expressions ==============================================================================*/
 
@@ -265,11 +291,11 @@ var Circular = (function() {
      * Parses out symbols (i.e. property names). Ignores "and" and "or".
      */
     BindingExpression.prototype.parseSymbols = function() {
-        var matches = this.str.match(/(?:^|\s|!)(\w+)(\s|$)/g)
+        var matches = this.str.match(/(?:^|\s|\W)(\w+)(\W|\s|$)/g)
         var symbols = []
         if (matches == null) throw new Error("no symbols found in expr '" + this.str + "'")
         for (var i = 0; i < matches.length; i++) {
-            var symbol = matches[i].trim().replace(/^!/, "")
+            var symbol = matches[i].trim().replace(/(^\W)|(\W$)/g, "")
             if (symbol in ["and", "or"] || symbol in symbols) continue
             symbols.push(symbol)
         }
@@ -287,7 +313,8 @@ var Circular = (function() {
             parent = parent.parentElement
         }
 
-        return null
+        // if nothing is found return the root controller
+        return document.querySelector("html")._controller
     }
 
     return new Circular()
