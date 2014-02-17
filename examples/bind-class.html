@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Class Bindings</title>
+    <script src="../circular.js"></script>
+    <style>
+        .alert {
+            margin: 5px;
+            padding: 10px;
+            background-color: #eee;
+        }
+
+        .warning {
+            background-color: #ffa0a0;
+        }
+
+        .info {
+            background-color: #a0a0ff;
+        }
+    </style>
+</head>
+<body>
+    <script type="application/json">
+        { "klass": "" }
+    </script>
+
+    <div class="alert" bind-class="klass">
+        Hello, World
+    </div>
+
+    <div>
+        <button bind-click="klass = 'info'">Info</button>
+        <button bind-click="klass = 'warning'">Warning</button>
+    </div>
+
+
+</body>
+</html>

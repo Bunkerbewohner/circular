@@ -28,11 +28,6 @@ var Circular = (function() {
     function Circular() {
         this.controllers = {}
 
-        // root controller
-        var html = document.querySelector("html")
-        html._controller = new Controller(html)
-        this.rootController = html._controller
-
         document.addEventListener("DOMContentLoaded", this.init.bind(this))
     }
 
@@ -42,6 +37,12 @@ var Circular = (function() {
      *  - initializing bindings
      */
     Circular.prototype.init = function() {
+        // root controller
+        var html = document.querySelector("html")
+        html._controller = new Controller(html)
+        this.rootController = html._controller
+        this.rootController.initData()
+
         // initialize all the controllers
         var elements = document.querySelectorAll("*[controller]")
         for (var i = 0; i < elements.length; i++) {
@@ -60,6 +61,7 @@ var Circular = (function() {
         // initialize all bindings
         ContentBinding.setup(this)
         StyleBinding.setup(this)
+        ClassBinding.setup(this)
         ClickAction.setup(this)
     }
 
@@ -88,9 +90,14 @@ var Circular = (function() {
             this.context = new Context(parentContext)
         }
 
+        this.initData()
+    }
+
+    Controller.prototype.initData = function() {
         // optionally load user defined context data from a script tag below the controller
-        var script = element.querySelector("script[type='application/json']")
-        if (script != null) {
+        var script = this.element.querySelector("script[type='application/json']")
+
+        if (script != null && findParentController(script) == this) {
             var data = JSON.parse(script.innerText)
             for (key in data) {
                 this.context[key] = data[key]
@@ -279,6 +286,8 @@ var Circular = (function() {
         for (var i = 0; i < elements.length; i++) {
             // expecting an object literal assigning expressions to css properties
             var text = elements[i].getAttribute("bind-style")
+            if (text[0] != "{") text = "{" + text + "}"
+
             text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
                 value = value.replace(/([^\\])"/g, "$1\\\"")
                 return ":\"" + value + "\"" + delim
@@ -304,6 +313,78 @@ var Circular = (function() {
                         controller.context[expr.symbols[0]] = init
                     }
                 }
+            }
+        }
+    }
+
+    //---
+
+    function ClassBinding(expression, element, klass) {
+        Binding.call(this, expression, element)
+        this.klass = klass
+        this.previousClasses = []
+    }
+    ClassBinding.prototype = new Binding()
+    Circular.prototype.ClassBinding = ClassBinding
+
+    ClassBinding.prototype.update = function(context, oldValue, newValue) {
+        if (this.klass === null) {
+            if (this.previousClasses.length > 0) {
+                this.removeClasses(this.previousClasses)
+            }
+
+            var newClasses = this.expression.evaluate(context)
+            if (typeof newClasses == "string") {
+                this.addClasses(newClasses.split(" "))
+                this.previousClasses = newClasses.split(" ")
+            } else if (newClasses instanceof Array) {
+                this.addClasses(newClasses)
+                this.previousClasses(newClasses)
+            }
+        }
+    }
+
+    ClassBinding.prototype.addClasses = function(classes) {
+        var current = this.element.className.split(" ")
+        for (var i = 0; i < classes.length; i++) {
+            var c = classes[i]
+            if (!(c in current)) current.push(c)
+        }
+        this.element.className = current.join(" ")
+    }
+
+    ClassBinding.prototype.removeClasses = function(classes) {
+        var current = this.element.className.split(" ")
+        current = current.filter(function(klass) {
+            return !(klass in classes)
+        })
+        this.element.className = current.join(" ")
+    }
+
+    ClassBinding.setup = function(circular) {
+        var elements = document.querySelectorAll("*[bind-class]")
+        for (var i = 0; i < elements.length; i++) {
+            // expecting an object literal assigning expressions to css properties
+            var text = elements[i].getAttribute("bind-class")
+
+            if (text[0] == "{") {
+                // map of classes and boolean expressions
+                text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+                    value = value.replace(/([^\\])"/g, "$1\\\"")
+                    return ":\"" + value + "\"" + delim
+                })
+                var dict = eval("(" + text + ")")
+
+                for (var key in dict) {
+                    var expr = new BindingExpression(dict[key])
+                    var binding = new ClassBinding(expr, elements[i], key)
+                    binding.attach()
+                }
+            } else {
+                // assuming an expression relying on a single property
+                var expr = new BindingExpression(text)
+                var binding = new ClassBinding(expr, elements[i], null)
+                binding.attach()
             }
         }
     }
@@ -360,12 +441,15 @@ var Circular = (function() {
      * Parses out symbols (i.e. property names). Ignores "and" and "or".
      */
     BindingExpression.prototype.parseSymbols = function() {
-        var matches = this.str.match(/(?:^|\s|\W)(\w+)(\W|\s|$)/g)
+        var matches = this.str.match(/(^|\s|\W)(\w+)(\W|\s|$)/g)
         var symbols = []
         if (matches == null) throw new Error("no symbols found in expr '" + this.str + "'")
         for (var i = 0; i < matches.length; i++) {
-            var symbol = matches[i].trim().replace(/(^\W)|(\W$)/g, "")
+            var match = matches[i].trim()
+            if (match[0] == "'" || match[0] == '"') continue // skip strings
+            var symbol = match.replace(/(^\W)|(\W$)/g, "") // remove non word characters from borders
 
+            // skip logical symbols, numbers
             if (symbol in ["and", "or"] || symbol in symbols) continue
             if (symbol.match(/^\d+(\.\d+)?$/)) continue
 
