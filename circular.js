@@ -329,17 +329,24 @@ var Circular = (function() {
 
     ClassBinding.prototype.update = function(context, oldValue, newValue) {
         if (this.klass === null) {
+            // if no klass is specified the binding expression is expected to generate a list of classes
+
+            // remove the previously added classes
             if (this.previousClasses.length > 0) {
                 this.removeClasses(this.previousClasses)
             }
 
+            // generate list of classes to add
             var newClasses = this.expression.evaluate(context)
+
+            // add the classes to this.element
             if (typeof newClasses == "string") {
                 this.previousClasses = this.addClasses(newClasses.split(" "))
             } else if (newClasses instanceof Array) {
                 this.previousClasses = this.addClasses(newClasses)
             }
         } else {
+            // a class was defined, so interpret the expression as a boolean one to determine whether to add it or not
             if (this.expression.evaluate(context)) {
                 this.addClasses([this.klass])
             } else {
