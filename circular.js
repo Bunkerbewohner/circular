@@ -90,7 +90,7 @@ var Circular = (function() {
             this.context = new Context(parentContext)
         }
 
-        this.initData()
+        Controller.prototype.initData.call(this)
     }
 
     Controller.prototype.initData = function() {
@@ -251,7 +251,7 @@ var Circular = (function() {
                 var init = elements[i].innerHTML.trim()
 
                 // check if it's a number
-                var match = init.match(/^(\d+(\.\d+)?)(%)?$/)
+                var match = init.match(/^(-?\d+(\.\d+)?)(%)?$/)
                 if (match != null) {
                     init = parseFloat(match[1])
                 }
@@ -288,7 +288,7 @@ var Circular = (function() {
             var text = elements[i].getAttribute("bind-style")
             if (text[0] != "{") text = "{" + text + "}"
 
-            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+            text = text.replace(/:\s+(.*?)(,|\})/g, function(match, value, delim, offset, string) {
                 value = value.replace(/([^\\])"/g, "$1\\\"")
                 return ":\"" + value + "\"" + delim
             })
@@ -305,7 +305,7 @@ var Circular = (function() {
                         var init = elements[i].style[key]
 
                         // check if the value is a number
-                        var match = init.match(/(\d+(\.\d+)?)(px|em|%|pt)$/)
+                        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
                         if (match != null) {
                             init = parseFloat(match[1])
                         }
@@ -369,13 +369,14 @@ var Circular = (function() {
     }
 
     ClassBinding.setup = function(circular) {
+        // TODO: omg refactor this
         var elements = document.querySelectorAll("*[bind-class]")
         for (var i = 0; i < elements.length; i++) {
             var text = elements[i].getAttribute("bind-class")
 
             if (text[0] == "{") {
                 // assuming map of classes and boolean expressions
-                text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+                text = text.replace(/:\s+(.*?)(,|\})/g, function(match, value, delim, offset, string) {
                     value = value.replace(/([^\\])"/g, "$1\\\"")
                     return ":\"" + value + "\"" + delim
                 })
@@ -457,7 +458,7 @@ var Circular = (function() {
 
             // skip logical symbols, numbers
             if (symbol in ["and", "or"] || symbol in symbols) continue
-            if (symbol.match(/^\d+(\.\d+)?$/)) continue
+            if (symbol.match(/^-?\d+(\.\d+)?$/)) continue
 
             symbols.push(symbol)
         }
