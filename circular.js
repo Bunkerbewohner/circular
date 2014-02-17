@@ -371,11 +371,10 @@ var Circular = (function() {
     ClassBinding.setup = function(circular) {
         var elements = document.querySelectorAll("*[bind-class]")
         for (var i = 0; i < elements.length; i++) {
-            // expecting an object literal assigning expressions to css properties
             var text = elements[i].getAttribute("bind-class")
 
             if (text[0] == "{") {
-                // map of classes and boolean expressions
+                // assuming map of classes and boolean expressions
                 text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
                     value = value.replace(/([^\\])"/g, "$1\\\"")
                     return ":\"" + value + "\"" + delim
@@ -388,7 +387,7 @@ var Circular = (function() {
                     binding.attach()
                 }
             } else {
-                // assuming an expression relying on a single property
+                // assuming an expression producing a list of classes
                 var expr = new BindingExpression(text)
                 var binding = new ClassBinding(expr, elements[i], null)
                 binding.attach()
