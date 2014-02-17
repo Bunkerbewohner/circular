@@ -62,6 +62,7 @@ var Circular = (function() {
         ContentBinding.setup(this)
         StyleBinding.setup(this)
         ClassBinding.setup(this)
+        AttributeBinding.setup(this)
         ClickAction.setup(this)
     }
 
@@ -392,6 +393,56 @@ var Circular = (function() {
                 var expr = new BindingExpression(text)
                 var binding = new ClassBinding(expr, elements[i], null)
                 binding.attach()
+            }
+        }
+    }
+
+    //---
+
+    function AttributeBinding(expression, element, attr) {
+        Binding.call(this, expression, element)
+        this.attr = attr
+    }
+    AttributeBinding.prototype = new Binding()
+    Circular.prototype.AttributeBinding = AttributeBinding
+
+    AttributeBinding.prototype.update = function(context, oldValue, newValue) {
+        this.element[this.attr] = this.expression.evaluate(context)
+    }
+
+    AttributeBinding.setup = function(circular) {
+        // TODO: Refactor
+        var elements = document.querySelectorAll("*[bind-attr]")
+        for (var i = 0; i < elements.length; i++) {
+            // expecting an object literal assigning expressions to css properties
+            var text = elements[i].getAttribute("bind-attr")
+            if (text[0] != "{") text = "{" + text + "}"
+
+            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+                value = value.replace(/([^\\])"/g, "$1\\\"")
+                return ":\"" + value + "\"" + delim
+            })
+            var dict = eval("(" + text + ")")
+
+            for (var key in dict) {
+                var expr = new BindingExpression(dict[key])
+                var binding = new AttributeBinding(expr, elements[i], key)
+                var controller = binding.attach()
+
+                // if the referenced property is undefined, attempt to initialize it from HTML template
+                if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
+                    if (elements[i][key] != "") {
+                        var init = elements[i][key]
+
+                        // check if the value is a number
+                        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
+                        if (match != null) {
+                            init = parseFloat(match[1])
+                        }
+
+                        controller.context[expr.symbols[0]] = init
+                    }
+                }
             }
         }
     }
