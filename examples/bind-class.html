@@ -29,10 +29,12 @@
     </div>
 
     <div>
-        <button bind-click="klass = 'info'">Info</button>
-        <button bind-click="klass = 'warning'">Warning</button>
+        <button bind-click="klass = ''">Reset</button>
+        <button bind-click="klass = 'info'" bind-class="{info: klass == 'info'}">Info</button>
+        <button bind-click="klass = 'warning'" bind-class="{warning: klass == 'warning'}">Warning</button>
     </div>
 
+    <hr>
 
 </body>
 </html>

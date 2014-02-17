@@ -335,29 +335,29 @@ var Circular = (function() {
 
             var newClasses = this.expression.evaluate(context)
             if (typeof newClasses == "string") {
-                this.addClasses(newClasses.split(" "))
-                this.previousClasses = newClasses.split(" ")
+                this.previousClasses = this.addClasses(newClasses.split(" "))
             } else if (newClasses instanceof Array) {
-                this.addClasses(newClasses)
-                this.previousClasses(newClasses)
+                this.previousClasses = this.addClasses(newClasses)
+            }
+        } else {
+            if (this.expression.evaluate(context)) {
+                this.addClasses([this.klass])
+            } else {
+                this.removeClasses([this.klass])
             }
         }
     }
 
     ClassBinding.prototype.addClasses = function(classes) {
         var current = this.element.className.split(" ")
-        for (var i = 0; i < classes.length; i++) {
-            var c = classes[i]
-            if (!(c in current)) current.push(c)
-        }
-        this.element.className = current.join(" ")
+        var add = classes.filter(function(c) { return c != "" && current.indexOf(c) < 0 })
+        this.element.className = current.concat(add).join(" ")
+        return add
     }
 
     ClassBinding.prototype.removeClasses = function(classes) {
         var current = this.element.className.split(" ")
-        current = current.filter(function(klass) {
-            return !(klass in classes)
-        })
+        current = current.filter(function(c) { return c != "" && classes.indexOf(c) < 0 })
         this.element.className = current.join(" ")
     }
 
