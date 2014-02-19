@@ -172,7 +172,8 @@ var Circular = (function() {
 
     Property.prototype.updateBindings = function(context, oldValue, newValue) {
         for (var i = 0; i < this.bindings.length; i++) {
-            this.bindings[i].update(context, oldValue, newValue)
+            var usedContext = this.bindings[i].getUpdateContext(context)
+            this.bindings[i].update(usedContext, oldValue, newValue)
         }
     }
 
@@ -191,9 +192,15 @@ var Circular = (function() {
 
     /*============= Bindings =========================================================================================*/
 
-    function Binding(expression, element) {
+    function Binding(expression, element, evaluationContext) {
         this.element = element
         this.expression = expression
+        this.evaluationContext = evaluationContext
+    }
+
+    Binding.prototype.getUpdateContext = function(updateContext) {
+        if (typeof this.evaluationContext != "undefined") return this.evaluationContext
+        else return updateContext
     }
 
     Binding.prototype.update = function(context, oldValue, newValue) {
@@ -207,6 +214,7 @@ var Circular = (function() {
     Binding.prototype.attach = function() {
         var controller = findParentController(this.element)
         if (controller == null) throw new Error("No parent controller found for element")
+        this.evaluationContext = controller.context
 
         for (var i = 0; i < this.expression.symbols.length; i++) {
             var symbol = this.expression.symbols[i]
@@ -223,9 +231,10 @@ var Circular = (function() {
      * @param element DOMElement
      * @param expression Binding Expression
      * @constructor
+     * @param evaluationContext
      */
-    function ContentBinding(expression, element) {
-        Binding.call(this, expression, element)
+    function ContentBinding(expression, element, evaluationContext) {
+        Binding.call(this, expression, element, evaluationContext)
     }
     ContentBinding.prototype = new Binding()
     Circular.prototype.ContentBinding = ContentBinding
@@ -289,7 +298,7 @@ var Circular = (function() {
             var text = elements[i].getAttribute("bind-style")
             if (text[0] != "{") text = "{" + text + "}"
 
-            text = text.replace(/:\s+(.*?)(,|\})/g, function(match, value, delim, offset, string) {
+            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
                 value = value.replace(/([^\\])"/g, "$1\\\"")
                 return ":\"" + value + "\"" + delim
             })
@@ -304,6 +313,56 @@ var Circular = (function() {
                 if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
                     if (elements[i].style[key] != "") {
                         var init = elements[i].style[key]
+
+                        // check if the value is a number
+                        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
+                        if (match != null) {
+                            init = parseFloat(match[1])
+                        }
+
+                        controller.context[expr.symbols[0]] = init
+                    }
+                }
+            }
+        }
+    }
+
+    //---
+
+    function AttributeBinding(expression, element, attr) {
+        Binding.call(this, expression, element)
+        this.attr = attr
+    }
+    AttributeBinding.prototype = new Binding()
+    Circular.prototype.AttributeBinding = AttributeBinding
+
+    AttributeBinding.prototype.update = function(context, oldValue, newValue) {
+        this.element[this.attr] = this.expression.evaluate(context)
+    }
+
+    AttributeBinding.setup = function(circular) {
+        // TODO: Refactor
+        var elements = document.querySelectorAll("*[bind-attr]")
+        for (var i = 0; i < elements.length; i++) {
+            // expecting an object literal assigning expressions to css properties
+            var text = elements[i].getAttribute("bind-attr")
+            if (text[0] != "{") text = "{" + text + "}"
+
+            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+                value = value.replace(/([^\\])"/g, "$1\\\"")
+                return ":\"" + value + "\"" + delim
+            })
+            var dict = eval("(" + text + ")")
+
+            for (var key in dict) {
+                var expr = new BindingExpression(dict[key])
+                var binding = new AttributeBinding(expr, elements[i], key)
+                var controller = binding.attach()
+
+                // if the referenced property is undefined, attempt to initialize it from HTML template
+                if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
+                    if (elements[i][key] != "") {
+                        var init = elements[i][key]
 
                         // check if the value is a number
                         var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
@@ -370,7 +429,6 @@ var Circular = (function() {
     }
 
     ClassBinding.setup = function(circular) {
-        // TODO: omg refactor this
         var elements = document.querySelectorAll("*[bind-class]")
         for (var i = 0; i < elements.length; i++) {
             var text = elements[i].getAttribute("bind-class")
@@ -393,56 +451,6 @@ var Circular = (function() {
                 var expr = new BindingExpression(text)
                 var binding = new ClassBinding(expr, elements[i], null)
                 binding.attach()
-            }
-        }
-    }
-
-    //---
-
-    function AttributeBinding(expression, element, attr) {
-        Binding.call(this, expression, element)
-        this.attr = attr
-    }
-    AttributeBinding.prototype = new Binding()
-    Circular.prototype.AttributeBinding = AttributeBinding
-
-    AttributeBinding.prototype.update = function(context, oldValue, newValue) {
-        this.element[this.attr] = this.expression.evaluate(context)
-    }
-
-    AttributeBinding.setup = function(circular) {
-        // TODO: Refactor
-        var elements = document.querySelectorAll("*[bind-attr]")
-        for (var i = 0; i < elements.length; i++) {
-            // expecting an object literal assigning expressions to css properties
-            var text = elements[i].getAttribute("bind-attr")
-            if (text[0] != "{") text = "{" + text + "}"
-
-            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
-                value = value.replace(/([^\\])"/g, "$1\\\"")
-                return ":\"" + value + "\"" + delim
-            })
-            var dict = eval("(" + text + ")")
-
-            for (var key in dict) {
-                var expr = new BindingExpression(dict[key])
-                var binding = new AttributeBinding(expr, elements[i], key)
-                var controller = binding.attach()
-
-                // if the referenced property is undefined, attempt to initialize it from HTML template
-                if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
-                    if (elements[i][key] != "") {
-                        var init = elements[i][key]
-
-                        // check if the value is a number
-                        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
-                        if (match != null) {
-                            init = parseFloat(match[1])
-                        }
-
-                        controller.context[expr.symbols[0]] = init
-                    }
-                }
             }
         }
     }
