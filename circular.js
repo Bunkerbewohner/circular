@@ -63,6 +63,7 @@ var Circular = (function() {
         StyleBinding.setup(this)
         ClassBinding.setup(this)
         AttributeBinding.setup(this)
+        InputBinding.setup(this)
         ClickAction.setup(this)
     }
 
@@ -379,6 +380,67 @@ var Circular = (function() {
 
     //---
 
+    function InputBinding(expression, element) {
+        Binding.call(this, expression, element)
+    }
+    InputBinding.prototype = new Binding()
+
+    InputBinding.prototype.update = function(context, oldValue, newValue) {
+        this.element.value = this.expression.evaluate(context)
+    }
+
+    InputBinding.prototype.bind = function(context) {
+        var self = this
+
+        function onchange(e) {
+            var value = self.element.value
+
+            if (self.element.type.toLowerCase() == "checkbox") {
+                var checkboxes = document.querySelectorAll("input[name='" + self.element.name + "']")
+                if (checkboxes.length == 1) {
+                    value = checkboxes[0].checked
+                }
+            }
+
+            context[self.expression.symbols[0]] = value
+        }
+
+        this.element.addEventListener("change", onchange)
+        this.element.addEventListener("keyup", onchange)
+    }
+
+    InputBinding.setup = function() {
+        var elements = document.querySelectorAll("input[bind-input]")
+        for (var i = 0; i < elements.length; i++) {
+            var elem = elements[i]
+            var expr = elem.getAttribute("bind-input")
+            if (expr == "") expr = elem.getAttribute("name")
+            expr = new BindingExpression(expr)
+
+            var binding = new InputBinding(expr, elem)
+            var ctrl = binding.attach()
+
+            // if the referenced property is undefined, attempt to initialize it from HTML template
+            if (expr.symbols.length == 1 && ctrl.context[expr.symbols[0]] == undefined) {
+                if (elem.value != "") {
+                    var init = elem.value
+
+                    // check if the value is a number
+                    var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
+                    if (match != null) {
+                        init = parseFloat(match[1])
+                    }
+
+                    ctrl.context[expr.symbols[0]] = init
+                }
+            }
+
+            binding.bind(ctrl.context)
+        }
+    }
+
+    //---
+
     function ClassBinding(expression, element, klass) {
         Binding.call(this, expression, element)
         this.klass = klass
@@ -485,7 +547,7 @@ var Circular = (function() {
      * @param context Context
      */
     BindingExpression.prototype.evaluate = function(context) {
-        var expr = this.str.replace("and", "&&").replace("or", "||")
+        var expr = this.str
 
         for (var i = 0; i < this.symbols.length; i++) {
             var symbol = this.symbols[i]

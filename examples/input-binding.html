@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Input Binding</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Verdana, sans-serif;
+            font-size: 18px;
+        }
+
+        form {
+            padding: 20px;
+            width: 500px;
+            margin: 40px auto;
+            box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
+            background-color: #eee;
+        }
+
+        h1 {
+            background-color: rgba(70, 146, 221, 0.8);
+            color: white;
+            margin: -20px;
+            padding: 20px;
+            margin-bottom: 10px;
+        }
+
+        form .row {
+            padding: 10px 0px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        form .row:first-of-type {
+            border-top: 0;
+        }
+
+        form .row:last-of-type {
+            border-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+        }
+
+        label.inline {
+            display: inline;
+            font-weight: normal;
+            font-size: 14px;
+        }
+
+        input[type='text'], input.password {
+            border: 1px solid #888;
+            padding: 5px;
+            font-size: 18px;
+        }
+
+        input[type='checkbox'] {
+            vertical-align: middle;
+        }
+
+        input[type='submit'] {
+            font-size: 20px;
+            padding: 8px 15px;
+            border: 1px solid #489;
+            background-color: #4692dd;
+            color: white;
+            box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        span.help {
+            font-size: 14px;
+            display: block;
+            padding: 4px;
+        }
+    </style>
+    <script src="../circular.js"></script>
+    <script>
+        Circular.controller("FormController", function() {
+            this.context = {
+                show_password: false,
+                isUsernameValid: function() {
+                    return this.username.match(/^\w{3,8}$/)
+                }
+            }
+        })
+    </script>
+</head>
+<body>
+
+<form controller="FormController">
+    <h1>Sign Up</h1>
+
+    <div class="row" bind-class="{error: !isUsernameValid}">
+        <label for="username">Username</label>
+        <input id="username" type="text" name="username" bind-input>
+        <span class="help">Between 3 and 8 characters, no special characters</span>
+    </div>
+
+    <div class="row">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" class="password" bind-input
+               bind-attr="type: (show_password ? 'text' : 'password')">
+        <label class="inline"><input type="checkbox" name="show_password" bind-input> show password</label>
+        <span class="help">At least 6 characters</span>
+    </div>
+
+    <div class="row">
+        <input type="submit" value="continue">
+    </div>
+</form>
+
+</body>
+</html>
