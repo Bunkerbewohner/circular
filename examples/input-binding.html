@@ -16,6 +16,7 @@
             margin: 40px auto;
             box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
             background-color: #eee;
+            min-height: 383px;
         }
 
         h1 {
@@ -78,15 +79,27 @@
         form .row.error input {
             box-shadow: inset 0px 0px 4px rgba(255, 0, 0, 0.8);
         }
+
+        .row {
+            opacity: 1;
+            transition: 0.4s all;
+            margin-top: 0;
+        }
+
+        .row.hidden {
+            opacity: 0;
+            margin-top: -10px;
+        }
     </style>
     <script src="../circular.js"></script>
     <script>
         Circular.controller("FormController", function() {
             this.context = {
-                show_password: false,
-                username: "",
                 isUsernameValid: function() {
                     return this.username.match(/^\w{3,8}$/) != null
+                },
+                isPasswordValid: function() {
+                    return this.password.match(/^.{6,}$/) != null
                 }
             }
         })
@@ -99,11 +112,11 @@
 
     <div class="row" bind-class="{error: !isUsernameValid}">
         <label for="username">Username</label>
-        <input id="username" type="text" name="username" bind-input autofocus>
+        <input id="username" type="text" name="username" bind-input autofocus value="">
         <span class="help">Between 3 and 8 characters, no special characters</span>
     </div>
 
-    <div class="row">
+    <div class="row" bind-class="{hidden: !isUsernameValid}">
         <label for="password">Password</label>
         <input id="password" type="password" name="password" class="password" bind-input
                bind-attr="type: (show_password ? 'text' : 'password')">
@@ -111,7 +124,7 @@
         <span class="help">At least 6 characters</span>
     </div>
 
-    <div class="row">
+    <div class="row" bind-class="{hidden: !isPasswordValid || !isUsernameValid}">
         <input type="submit" value="continue">
     </div>
 </form>

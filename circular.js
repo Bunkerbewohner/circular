@@ -60,10 +60,10 @@ var Circular = (function() {
 
         // initialize all bindings
         ContentBinding.setup(this)
-        StyleBinding.setup(this)
-        ClassBinding.setup(this)
-        AttributeBinding.setup(this)
         InputBinding.setup(this)
+        StyleBinding.setup(this)
+        AttributeBinding.setup(this)
+        ClassBinding.setup(this)
         ClickAction.setup(this)
     }
 
@@ -406,20 +406,32 @@ var Circular = (function() {
         var self = this
 
         function onchange(e) {
-            var value = self.element.value
-
-            if (self.element.type.toLowerCase() == "checkbox") {
-                var checkboxes = document.querySelectorAll("input[name='" + self.element.name + "']")
-                if (checkboxes.length == 1) {
-                    value = checkboxes[0].checked
-                }
-            }
-
-            context[self.expression.symbols[0]] = value
+            context[self.expression.symbols[0]] = self.getElementValue(self.element)
         }
 
         this.element.addEventListener("change", onchange)
         this.element.addEventListener("keyup", onchange)
+    }
+
+    InputBinding.prototype.getElementValue = function(elem) {
+        var init = elem.value
+
+        // check if the value is a number
+        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
+        if (match != null) {
+            init = parseFloat(match[1])
+        }
+
+        // check for toggle checkbox
+        // TODO: Assumes that input names are unique on page. Fix that
+        if (elem.type.toLowerCase() == "checkbox") {
+            var checkboxes = document.querySelectorAll("input[name='" + elem.name + "']")
+            if (checkboxes.length == 1) {
+                init = checkboxes[0].checked
+            }
+        }
+
+        return init
     }
 
     InputBinding.setup = function() {
@@ -435,17 +447,7 @@ var Circular = (function() {
 
             // if the referenced property is undefined, attempt to initialize it from HTML template
             if (expr.symbols.length == 1 && ctrl.context[expr.symbols[0]] == undefined) {
-                if (elem.value != "") {
-                    var init = elem.value
-
-                    // check if the value is a number
-                    var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
-                    if (match != null) {
-                        init = parseFloat(match[1])
-                    }
-
-                    ctrl.context[expr.symbols[0]] = init
-                }
+                ctrl.context[expr.symbols[0]] = InputBinding.prototype.getElementValue(elem)
             }
 
             binding.bind(ctrl.context)
