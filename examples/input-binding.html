@@ -32,7 +32,7 @@
             border-top: 1px solid #e0e0e0;
         }
 
-        form .row:first-of-type {
+        form .row:first-of-type, form .row:nth-of-type(2) {
             border-top: 0;
         }
 
@@ -61,13 +61,14 @@
             vertical-align: middle;
         }
 
-        input[type='submit'] {
+        input[type='submit'], .btn {
             font-size: 20px;
             padding: 8px 15px;
             border: 1px solid #489;
             background-color: #4692dd;
             color: white;
             box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
         }
 
         span.help {
@@ -76,8 +77,12 @@
             padding: 4px;
         }
 
-        form .row.error input {
-            box-shadow: inset 0px 0px 4px rgba(255, 0, 0, 0.8);
+        form .row.error input[type='text'], form .row.error input[type='password'] {
+            box-shadow: inset 0px 0px 4px rgba(255, 0, 0, 0.9);
+        }
+
+        form .row.valid input[type='text'], form .row.valid input[type='password'] {
+            box-shadow: inset 0px 0px 4px rgba(100, 255, 100, 0.9);
         }
 
         .row {
@@ -90,16 +95,38 @@
             opacity: 0;
             margin-top: -10px;
         }
+
+        .row.hidden.collapsed {
+            position: absolute;
+        }
+
+        .row.collapsed {
+            border-top: 0;
+            position: absolute;
+        }
     </style>
     <script src="../circular.js"></script>
     <script>
         Circular.controller("FormController", function() {
             this.context = {
+                success: false,
                 isUsernameValid: function() {
                     return this.username.match(/^\w{3,8}$/) != null
                 },
                 isPasswordValid: function() {
                     return this.password.match(/^.{6,}$/) != null
+                },
+                usernameRowClass: function() {
+                    if (this.success) return "hidden";
+                    if (this.username.length >= 3) {
+                        return this.username.match(/^\w{3,8}$/) ? "valid" : "error"
+                    } else {
+                        return ""
+                    }
+                },
+                onSubmit: function() {
+                    this.success = true
+                    return false
                 }
             }
         })
@@ -107,16 +134,20 @@
 </head>
 <body>
 
-<form controller="FormController">
+<form controller="FormController" bind-submit="onSubmit()">
     <h1>Sign Up</h1>
 
-    <div class="row" bind-class="{error: !isUsernameValid}">
+    <div class="row collapsed" bind-class="{hidden: !success}">
+        <h2>Welcome to the Club, <span bind-content="username"></span>!</h2>
+    </div>
+
+    <div class="row" bind-class="usernameRowClass">
         <label for="username">Username</label>
         <input id="username" type="text" name="username" bind-input autofocus value="">
         <span class="help">Between 3 and 8 characters, no special characters</span>
     </div>
 
-    <div class="row" bind-class="{hidden: !isUsernameValid}">
+    <div class="row" bind-class="{hidden: !isUsernameValid || success, valid: isPasswordValid}">
         <label for="password">Password</label>
         <input id="password" type="password" name="password" class="password" bind-input
                bind-attr="type: (show_password ? 'text' : 'password')">
@@ -124,7 +155,7 @@
         <span class="help">At least 6 characters</span>
     </div>
 
-    <div class="row" bind-class="{hidden: !isPasswordValid || !isUsernameValid}">
+    <div class="row" bind-class="{hidden: !isPasswordValid || !isUsernameValid || success}">
         <input type="submit" value="continue">
     </div>
 </form>

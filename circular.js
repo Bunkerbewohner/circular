@@ -64,7 +64,7 @@ var Circular = (function() {
         StyleBinding.setup(this)
         AttributeBinding.setup(this)
         ClassBinding.setup(this)
-        ClickAction.setup(this)
+        Action.setup(this)
     }
 
     Circular.prototype.controller = function(name, klass) {
@@ -535,19 +535,34 @@ var Circular = (function() {
     /*============= Actions ==========================================================================================*/
 
     function ClickAction(expression, element) {
-        var ctrl = findParentController(element)
-
-        element.addEventListener("click", function() {
-            expression.evaluate(ctrl.context)
-        })
+        Action.call(this, expression, element, "click")
     }
 
-    ClickAction.setup = function(circular) {
+    Action.setup = function(circular) {
         var elements = document.querySelectorAll("*[bind-click]")
         for (var i = 0; i < elements.length; i++) {
             var expr = new BindingExpression(elements[i].getAttribute("bind-click"))
             var action = new ClickAction(expr, elements[i])
         }
+
+        elements = document.querySelectorAll("form[bind-submit]")
+        for (i = 0; i < elements.length; i++) {
+            expr = new BindingExpression(elements[i].getAttribute("bind-submit"))
+            action = new Action(expr, elements[i], "submit")
+        }
+    }
+
+    function Action(expression, element, event) {
+        var ctrl = findParentController(element, true)
+
+        element.addEventListener(event, function(e) {
+            if(!expression.evaluate(ctrl.context)) {
+                e.preventDefault()
+                return false
+            } else {
+                return true
+            }
+        })
     }
 
     /*============= Binding expressions ==============================================================================*/
@@ -607,7 +622,9 @@ var Circular = (function() {
 
     /*============= Helpers ==========================================================================================*/
 
-    function findParentController(element) {
+    function findParentController(element, includeSelf) {
+        if (includeSelf && "_controller" in element) return element._controller
+
         var parent = element.parentElement
         while (parent != null) {
             if ("_controller" in parent) {
