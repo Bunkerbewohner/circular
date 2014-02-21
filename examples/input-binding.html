@@ -74,14 +74,19 @@
             display: block;
             padding: 4px;
         }
+
+        form .row.error input {
+            box-shadow: inset 0px 0px 4px rgba(255, 0, 0, 0.8);
+        }
     </style>
     <script src="../circular.js"></script>
     <script>
         Circular.controller("FormController", function() {
             this.context = {
                 show_password: false,
+                username: "",
                 isUsernameValid: function() {
-                    return this.username.match(/^\w{3,8}$/)
+                    return this.username.match(/^\w{3,8}$/) != null
                 }
             }
         })
@@ -94,7 +99,7 @@
 
     <div class="row" bind-class="{error: !isUsernameValid}">
         <label for="username">Username</label>
-        <input id="username" type="text" name="username" bind-input>
+        <input id="username" type="text" name="username" bind-input autofocus>
         <span class="help">Between 3 and 8 characters, no special characters</span>
     </div>
 

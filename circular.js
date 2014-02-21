@@ -118,29 +118,15 @@ var Circular = (function() {
         return Object.create(parent || Context.prototype, {})
     }
 
-    /**
-     * Adds a binding to an existing property
-     * @param property property name
-     * @param binding
-     */
-    Context.prototype.addBinding = function(property, binding) {
-        // check if the background property already exists
-        if ("_"+property in this) {
-            // if yes, just add the binding
-            this["_"+property].addBinding(binding)
-            binding.update(this, this[property], this[property])
-            return
+    Context.prototype.getOrCreateProperty = function(name) {
+        if ("_"+name in this) {
+            return this["_"+name]
         }
 
-        // if not create the new background property
-        var p = new Property(this, property, property in this ? this[property] : undefined)
-        p.addBinding(binding)
-
-        // if the context defines an initial value, update the binding with it
-        if (p.getValue() != undefined) binding.update(this, undefined, p.getValue())
+        var p = new Property(this, name, name in this ? this[name] : undefined)
 
         // save it as a hidden property using the name prepended with underscore
-        Object.defineProperty(this, "_"+property, {
+        Object.defineProperty(this, "_"+name, {
             configurable: true,
             enumerable: false,
             value: p,
@@ -148,12 +134,29 @@ var Circular = (function() {
         })
 
         // replace the existing property with an accessor to the hidden property
-        Object.defineProperty(this, property, {
+        Object.defineProperty(this, name, {
             configurable: true,
             enumerable: true,
             get: p.getValue.bind(p),
             set: p.setValue.bind(p)
         })
+
+        return p
+    }
+
+    /**
+     * Adds a binding to an existing property
+     * @param property property name
+     * @param binding
+     */
+    Context.prototype.addBinding = function(property, binding) {
+        var p = this.getOrCreateProperty(property)
+        p.addBinding(binding)
+
+        // update the binding with the initial value if possible
+        if (p.getValue() != undefined) {
+            binding.update(this, undefined, p.getValue())
+        }
     }
 
     Circular.prototype.Context = Context
@@ -169,6 +172,16 @@ var Circular = (function() {
 
     Property.prototype.addBinding = function(binding) {
         this.bindings.push(binding)
+
+        if (this.value instanceof Function) {
+            // detect the dependencies of the function
+            var depends = this.value.toString().match(/(this\.\w+)(?=\W)/g)
+            for (var i = 0; i < depends.length; i++) {
+                var symbol = depends[i].replace("this.", "")
+                var property = binding.evaluationContext.getOrCreateProperty(symbol)
+                property.bindings.push(binding)
+            }
+        }
     }
 
     Property.prototype.updateBindings = function(context, oldValue, newValue) {
@@ -548,6 +561,7 @@ var Circular = (function() {
      */
     BindingExpression.prototype.evaluate = function(context) {
         var expr = this.str
+        var calls = {}
 
         for (var i = 0; i < this.symbols.length; i++) {
             var symbol = this.symbols[i]
@@ -555,8 +569,11 @@ var Circular = (function() {
                 throw new Error("Unknown property '" + symbol + "' in expression '" + this.str + "'")
 
             if (typeof context[symbol] == "function") {
-                var __call__ = context[symbol].bind(context)
-                expr = expr.replace(symbol, "__call__")
+                calls[symbol] = context[symbol].bind(context)
+                expr = expr.replace(symbol, "calls." + symbol)
+                if (!expr.match(new RegExp("calls."+symbol+"\\("))) {
+                    expr = expr.replace("calls." + symbol, "calls." + symbol + "()")
+                }
             } else {
                 expr = expr.replace(symbol, "context."+symbol)
             }
