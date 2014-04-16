@@ -103,7 +103,6 @@
         .row.collapsed {
             border-top: 0;
             position: absolute;
-            z-index: -8;
         }
     </style>
     <script src="../circular.js"></script>
@@ -111,6 +110,8 @@
         Circular.controller("FormController", function() {
             this.context = {
                 success: false,
+                password: '',
+                show_password: false,
                 isUsernameValid: function() {
                     return this.username.match(/^\w{3,8}$/) != null
                 },

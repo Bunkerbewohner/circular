@@ -27,6 +27,7 @@
 var Circular = (function() {
     function Circular() {
         this.controllers = {}
+        this.controllerInstances = {};
 
         document.addEventListener("DOMContentLoaded", this.init.bind(this))
     }
@@ -46,25 +47,46 @@ var Circular = (function() {
         // initialize all the controllers
         var elements = document.querySelectorAll("*[controller]")
         for (var i = 0; i < elements.length; i++) {
+            if (elements[i].hasOwnProperty("_controller")) continue
             var name = elements[i].getAttribute("controller")
             if (!(name in this.controllers)) throw new Error("Unknown controller '" + name + "'")
 
             var klass = this.controllers[name]
-            elements[i]._controller = new klass()
+
+            if (typeof klass == "function")
+                elements[i]._controller = new klass()
+            else if (typeof klass == "object")
+                elements[i]._controller = new function() {
+                    this.context = result
+                }
+            else
+                throw Error("invalid controller definition")
 
             var parentController = findParentController(elements[i])
             var parentContext = parentController != null ? parentController.context : this.rootController.context
 
             Controller.call(elements[i]._controller, elements[i], parentContext)
+
+            if (typeof this.controllerInstances[name] == "undefined") {
+                this.controllerInstances[name] = [];
+            }
+
+            this.controllerInstances[name].push(elements[i]._controller)
         }
 
         // initialize all bindings
-        ContentBinding.setup(this)
-        InputBinding.setup(this)
-        StyleBinding.setup(this)
-        AttributeBinding.setup(this)
-        ClassBinding.setup(this)
-        Action.setup(this)
+        this.setupBindings(document)
+    }
+
+    Circular.prototype.setupBindings = function(root) {
+        root = root || document
+        CollectionBinding.setup(root)
+        ContentBinding.setup(root)
+        InputBinding.setup(root)
+        StyleBinding.setup(root)
+        AttributeBinding.setup(root)
+        ClassBinding.setup(root)
+        Action.setup(root)
     }
 
     Circular.prototype.controller = function(name, klass) {
@@ -73,6 +95,14 @@ var Circular = (function() {
 
     Circular.prototype.getRootController = function() {
         return this.rootController
+    }
+
+    Circular.prototype.getControllerInstances = function(name) {
+        return this.controllerInstances[name];
+    }
+
+    Circular.prototype.getControllerInstance = function(name) {
+        return this.controllerInstances[name][0];
     }
 
     /*============= Controller =======================================================================================*/
@@ -100,7 +130,12 @@ var Circular = (function() {
         var script = this.element.querySelector("script[type='application/json']")
 
         if (script != null && findParentController(script) == this) {
-            var data = JSON.parse(script.innerText)
+            try {
+                var text = script.innerText || script.textContent
+                var data = JSON.parse(text)
+            } catch (e) {
+                console.log("Invalid JSON in " + text)
+            }
             for (key in data) {
                 this.context[key] = data[key]
             }
@@ -240,6 +275,63 @@ var Circular = (function() {
 
     //--
 
+    function CollectionBinding(expression, element, evaluationContext) {
+        Binding.call(this, expression, element, evaluationContext)
+
+        this.template = element.innerHTML
+        element.innerHTML = ''
+        element.innerHTML = '<!-- Loading -->'
+    }
+    CollectionBinding.prototype = new Binding()
+    Circular.prototype.CollectionBinding = CollectionBinding
+
+    CollectionBinding.prototype.update = function(context) {
+        this.element.innerHTML = ''
+        var collection = this.expression.evaluate(context)
+
+        if (!collection || !('length' in collection)) {
+            return
+        }
+
+        for (var i = 0; i < collection.length; i++) {
+            this.element.innerHTML += this.template
+        }
+
+        for (i = 0; i < collection.length; i++) {
+            // create child controller
+            var repeater = this.element.children[i]
+            var controller = new Controller(repeater, context)
+
+            // initialize the values
+            var keys = Object.keys(collection[i])
+            for (var j = 0; j < keys.length; j++) {
+                var p = controller.context.getOrCreateProperty(keys[j])
+                var value = collection[i][keys[j]]
+                p.setValue(value)
+            }
+
+            repeater._controller = controller
+
+            // initialize other bindings for this repeater
+            Circular.prototype.setupBindings(repeater)
+        }
+    }
+
+    CollectionBinding.setup = function(root) {
+        root = root || document
+        var elements = root.querySelectorAll("*[bind-collection]")
+        for (var i = 0; i < elements.length; i++) {
+            var elem = elements[i]
+
+            var exprText = elements[i].getAttribute("bind-collection")
+            var expr = new BindingExpression(exprText)
+            var binding = new CollectionBinding(expr, elements[i])
+            var controller = binding.attach()
+        }
+    }
+
+    //--
+
     /**
      * Binds the content of an HTML element to an expression
      * @param element DOMElement
@@ -254,15 +346,20 @@ var Circular = (function() {
     Circular.prototype.ContentBinding = ContentBinding
 
     ContentBinding.prototype.update = function(context, oldValue, newValue) {
-        this.element.innerHTML = this.expression.evaluate(context)
+        var value = this.expression.evaluate(context)
+        if (typeof value != "undefined") {
+            this.element.innerHTML = value
+        }
     }
 
     /**
      * Searches for content binding declarations and sets up the bindings.
      */
-    ContentBinding.setup = function(circular) {
+    ContentBinding.setup = function(root) {
+        root = root || document
+
         // TODO: Refactor binding setups
-        var elements = document.querySelectorAll("*[bind-content]")
+        var elements = root.querySelectorAll("*[bind-content]")
         for (var i = 0; i < elements.length; i++) {
             var exprText = elements[i].getAttribute("bind-content")
             var expr = new BindingExpression(exprText)
@@ -305,8 +402,9 @@ var Circular = (function() {
         this.element.style[this.style] = this.expression.evaluate(context)
     }
 
-    StyleBinding.setup = function(circular) {
-        var elements = document.querySelectorAll("*[bind-style]")
+    StyleBinding.setup = function(root) {
+        root = root || document
+        var elements = root.querySelectorAll("*[bind-style]")
         for (var i = 0; i < elements.length; i++) {
             // expecting an object literal assigning expressions to css properties
             var text = elements[i].getAttribute("bind-style")
@@ -329,7 +427,7 @@ var Circular = (function() {
                         var init = elements[i].style[key]
 
                         // check if the value is a number
-                        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
+                        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)?$/)
                         if (match != null) {
                             init = parseFloat(match[1])
                         }
@@ -354,15 +452,16 @@ var Circular = (function() {
         this.element[this.attr] = this.expression.evaluate(context)
     }
 
-    AttributeBinding.setup = function(circular) {
+    AttributeBinding.setup = function(root) {
+        root = root || document
         // TODO: Refactor
-        var elements = document.querySelectorAll("*[bind-attr]")
+        var elements = root.querySelectorAll("*[bind-attr]")
         for (var i = 0; i < elements.length; i++) {
             // expecting an object literal assigning expressions to css properties
             var text = elements[i].getAttribute("bind-attr")
             if (text[0] != "{") text = "{" + text + "}"
 
-            text = text.replace(/:\s+(.*)(,|\})/g, function(match, value, delim, offset, string) {
+            text = text.replace(/:\s+(.*?)(,|\})/g, function(match, value, delim, offset, string) {
                 value = value.replace(/([^\\])"/g, "$1\\\"")
                 return ":\"" + value + "\"" + delim
             })
@@ -395,47 +494,115 @@ var Circular = (function() {
 
     function InputBinding(expression, element) {
         Binding.call(this, expression, element)
+
+        // TODO: Assumes that input names are unique on page. Fix that
+        this.type = "text"
+        this.arity = 1
+
+        if (element.tagName == "INPUT") {
+            var inputType = element.type.toLowerCase()
+            this.arity = document.querySelectorAll("input[name='" + element.name + "']").length
+
+            // determine binding type based on input type
+            switch (inputType) {
+                case "checkbox":
+                    this.type = this.arity == 1 ? "toggle" : "multi-select"
+                    break
+                case "radio":
+                    this.type = "select"
+                    break
+                default:
+                    this.type = "text"
+            }
+        } else if (element.tagName == "SELECT") {
+            if (element.multiple) {
+                this.type = "multi-select"
+            } else {
+                this.type = "select"
+            }
+        } else if (element.tagName == "TEXTAREA") {
+            this.type = "text"
+        }
     }
     InputBinding.prototype = new Binding()
 
     InputBinding.prototype.update = function(context, oldValue, newValue) {
-        this.element.value = this.expression.evaluate(context)
+        if (this.type == "select" || this.type == "multi-select") {
+            // look for the element and check it
+            var value = this.expression.evaluate(context)
+            var elements = document.querySelectorAll(this.element.tagName+"[name='"+this.element.name+"']")
+            for (var i = 0; i < elements.length; i++) {
+                if (elements[i].value == value) {
+                    elements[i].checked = true
+                    return
+                }
+            }
+        } else {
+            var replacement = this.expression.evaluate(context)
+            if (this.element.value != replacement) {
+                this.element.value = replacement
+            }
+        }
     }
 
     InputBinding.prototype.bind = function(context) {
         var self = this
 
-        function onchange(e) {
-            context[self.expression.symbols[0]] = self.getElementValue(self.element)
+        if (this.type == "text" || this.type == "toggle") {
+            function onchange(e) {
+                context[self.expression.symbols[0]] = self.getElementValue(self.element)
+            }
+
+            this.element.addEventListener("change", onchange, false)
+            this.element.addEventListener("keyup", onchange, false)
+        } else if (this.type == "multi-select" || this.type == "select") {
+            this.element.addEventListener("change", function(e) {
+                context[self.expression.symbols[0]] = self.getElementValue(this)
+            })
         }
 
-        this.element.addEventListener("change", onchange)
-        this.element.addEventListener("keyup", onchange)
+        if (!this.element.hasOwnProperty("bindings")) {
+            this.element.bindings = []
+        }
+
+        this.element.bindings.push(this)
+    }
+
+    InputBinding.prototype.read = function(context) {
+        context = context || this.evaluationContext
+        context[this.expression.symbols[0]] = this.getElementValue(this.element)
     }
 
     InputBinding.prototype.getElementValue = function(elem) {
         var init = elem.value
 
         // check if the value is a number
-        var match = init.match(/(-?\d+(\.\d+)?)(px|em|%|pt)$/)
+        var match = init.match(/^(-?\d+(\.\d+)?)(px|em|%|pt)?$/)
         if (match != null) {
             init = parseFloat(match[1])
         }
 
-        // check for toggle checkbox
-        // TODO: Assumes that input names are unique on page. Fix that
-        if (elem.type.toLowerCase() == "checkbox") {
-            var checkboxes = document.querySelectorAll("input[name='" + elem.name + "']")
-            if (checkboxes.length == 1) {
-                init = checkboxes[0].checked
+        if (this.type == "toggle") {
+            init = elem.checked
+        } else if (this.type == "select") {
+            var elements = document.querySelectorAll("input[name='" + elem.name + "']")
+            for (var i = 0; i < elements.length; i++) {
+                if (elements[i].checked) {
+                    init = elements[i].value
+                    break
+                }
             }
         }
+
+        if (init == "true") init = true
+        else if (init == "false") init = false
 
         return init
     }
 
-    InputBinding.setup = function() {
-        var elements = document.querySelectorAll("input[bind-input]")
+    InputBinding.setup = function(root) {
+        root = root || document
+        var elements = root.querySelectorAll("input[bind-input]")
         for (var i = 0; i < elements.length; i++) {
             var elem = elements[i]
             var expr = elem.getAttribute("bind-input")
@@ -505,8 +672,9 @@ var Circular = (function() {
         this.element.className = current.join(" ")
     }
 
-    ClassBinding.setup = function(circular) {
-        var elements = document.querySelectorAll("*[bind-class]")
+    ClassBinding.setup = function(root) {
+        root = root || document
+        var elements = root.querySelectorAll("*[bind-class]")
         for (var i = 0; i < elements.length; i++) {
             var text = elements[i].getAttribute("bind-class")
 
@@ -538,14 +706,15 @@ var Circular = (function() {
         Action.call(this, expression, element, "click")
     }
 
-    Action.setup = function(circular) {
-        var elements = document.querySelectorAll("*[bind-click]")
+    Action.setup = function(root) {
+        root = root || document
+        var elements = root.querySelectorAll("*[bind-click]")
         for (var i = 0; i < elements.length; i++) {
             var expr = new BindingExpression(elements[i].getAttribute("bind-click"))
             var action = new ClickAction(expr, elements[i])
         }
 
-        elements = document.querySelectorAll("form[bind-submit]")
+        elements = root.querySelectorAll("form[bind-submit]")
         for (i = 0; i < elements.length; i++) {
             expr = new BindingExpression(elements[i].getAttribute("bind-submit"))
             action = new Action(expr, elements[i], "submit")
@@ -556,13 +725,14 @@ var Circular = (function() {
         var ctrl = findParentController(element, true)
 
         element.addEventListener(event, function(e) {
+            ctrl.context._event = e
             if(!expression.evaluate(ctrl.context)) {
                 e.preventDefault()
                 return false
             } else {
                 return true
             }
-        })
+        }, false)
     }
 
     /*============= Binding expressions ==============================================================================*/
@@ -592,27 +762,37 @@ var Circular = (function() {
                     expr = expr.replace("calls." + symbol, "calls." + symbol + "()")
                 }
             } else {
-                expr = expr.replace(symbol, "context."+symbol)
+                var pattern = new RegExp("([^\\.]|^)" + symbol)
+                expr = expr.replace(pattern, "$1context."+symbol)
             }
         }
 
-        return eval(expr)
+        try {
+            return eval(expr)
+        } catch (e) {
+            return null
+        }
     }
 
     /**
      * Parses out symbols (i.e. property names). Ignores "and" and "or".
      */
     BindingExpression.prototype.parseSymbols = function() {
-        var matches = this.str.match(/(^|\s|\W)(\w+)(\W|\s|$)/g)
+
+        // remove strings
+        var str = this.str.replace(/'[^']*?'/, '').replace(/"[^"]*?"/, '')
+
+        var matches = str.match(/(^|\s|\W)(\w+)(\W|\s|$)/g)
         var symbols = []
-        if (matches == null) throw new Error("no symbols found in expr '" + this.str + "'")
+        if (matches == null) return []
+
         for (var i = 0; i < matches.length; i++) {
             var match = matches[i].trim()
             if (match[0] == "'" || match[0] == '"') continue // skip strings
             var symbol = match.replace(/(^\W)|(\W$)/g, "") // remove non word characters from borders
 
             // skip logical symbols, numbers
-            if (symbol in ["and", "or"] || symbol in symbols) continue
+            if (["and", "or", "if", "else"].indexOf(symbol) >= 0 || symbol in symbols) continue
             if (symbol.match(/^-?\d+(\.\d+)?$/)) continue
 
             symbols.push(symbol)
