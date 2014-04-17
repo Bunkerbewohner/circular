@@ -1,5 +1,5 @@
 /**
- * circular.js
+ * circular.js 0.2.0
  *
  * The MIT License (MIT)
  *
