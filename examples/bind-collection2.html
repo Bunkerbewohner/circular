@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Collection Bindings</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Verdana, sans-serif;
+            font-size: 18px;
+        }
+
+        body {
+            padding: 20px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        table {
+            width: 500px;
+        }
+
+        table td {
+            width: 50%;
+        }
+
+        table th {
+            text-align: left;
+            border-bottom: 1px solid black;
+        }
+
+        form table {
+            border-top: 1px solid #888;
+            margin-top: 5px;
+        }
+
+    </style>
+    <script src="../circular.js"></script>
+    <script>
+        Circular.controller("ShoppingListController", {
+            items: ["Milk", "Sugar", "Eggs"],
+            addItem: function() {
+                this.items = this.items.concat([this.new_item])
+                this.new_item = ""
+                return false
+            }
+        })
+    </script>
+</head>
+<body controller="ShoppingListController">
+
+<h1>Shopping List</h1>
+
+<ul bind-collection="items">
+    <li><span bind-content="item"></span></li>
+</ul>
+
+<form bind-submit="addItem()">
+<table>
+    <tr>
+        <td><input type="text" name="new_item" bind-input></td>
+        <td><input type="submit"></td>
+    </tr>
+</table>
+</form>
+
+
+</body>
+</html>

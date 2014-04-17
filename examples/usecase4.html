@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+    <script src="../circular.js"></script>
+</head>
+<body>
+
+<script>
+Circular.controller("A", { a: "controller A" })
+Circular.controller("B", { b: "controller B" })
+Circular.controller("C", { c: "controller C", a: "overwritten in controller C" })
+</script>
+
+<div controller="A">
+	<h1>Context A</h1>
+	<p>A = <span bind-content="a"/></p>
+	<p>B = <span bind-content="b"/></p>
+	<p>C = <span bind-content="c"/></p>
+
+	<div controller="B">
+		<h2>Context B</h2>
+
+		<p>A = <span bind-content="a"/></p>
+		<p>B = <span bind-content="b"/></p>
+		<p>C = <span bind-content="c"/></p>
+
+		<div controller="C">
+			<h3>Context C</h3>
+
+			<p>A = <span bind-content="a"/></p>
+			<p>B = <span bind-content="b"/></p>
+			<p>C = <span bind-content="c"/></p>
+		</div>
+	</div>
+</div>
+
+</body>
+</html>

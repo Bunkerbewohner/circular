@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head>
+    <title>Tweet Me</title>
+    <script src="../circular.js"></script>
+</head>
+<body>
+<form action="send-tweet.php" method="POST">
+	<h1>Write a Tweet</h1>
+	<textarea name="text" rows="4" cols="70" bind-input></textarea>
+	<p>Remaining Characters: <span bind-content>140 - text.length</span></p>
+    <input type="submit" value="send">
+</form>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+	<title>Testpage</title>
+	<script src="../circular.js"></script>
+</head>
+<body>
+<script>
+Circular.controller("Test", {
+	"title": "My Shopping List",
+	"items": ["Milk", "Bread", "Eggs"],
+	"meta": {
+		"date": "2014-04-17",
+		"author": "Jamie"
+	}
+})
+</script>
+
+<div class="shopping-list" controller="Test">
+	<h1 bind-content="title"></h1>
+	<p>Created by <span bind-content="meta.author"></span> on <span bind-content="meta.date"></span></p>
+
+	<ul bind-collection="items">
+		<li><span bind-content="item"></span></li>
+	</ul>
+
+    <button bind-click="title = 'New Title'">Change Title</button><br>
+
+    <button bind-click="items.push('Chocolate')"
+            title="This method adds an item but doesn't trigger an update">Add Item wrongly</button>
+    <button bind-click="_refresh('items')"
+            title="Manually triggers an update of the bindings on items">Manually refresh items</button>
+    <button bind-click="items = items.concat(['Potatoes'])"
+            title="Replaces the items as a whole and therefore triggers an update">Add Item correctly</button><br>
+
+    <button bind-click="meta.author = 'Tywin'"
+            title="This method changes an object property but doesn't trigger an update">Change Object Property wrongly</button>
+    <button bind-click="_refresh('meta')"
+            title="Manually triggers an update of the bindings on meta">Manually refresh object</button>
+    <button bind-click="meta = {'date': meta.date, 'author': 'Tyrion'}"
+            title="Replaces the meta object as a whole and therefore triggers an update">Change Object correctly</button>
+</div>
+</body>
+</html>

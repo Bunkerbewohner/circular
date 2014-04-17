@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+	<title>Testpage</title>
+	<script src="../circular.js"></script>
+    <script>
+        Circular.controller("MyController", {
+            name: "Joffrey",
+            alive: true,
+            kill: function() {
+                this.alive = false
+            }
+        })
+    </script>
+</head>
+<body controller="MyController">
+	<h1>King <span bind-content="name">...</span> is
+		<span bind-content="(alive ? 'alive!' : 'dead!')">...</span></h1>
+
+	<button bind-click="kill()" bind-attr="{disabled: !alive}">Kill <span bind-content="name">...</span></button>
+</body>
+</html>

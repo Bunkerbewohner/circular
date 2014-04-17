@@ -148,6 +148,12 @@ var Circular = (function() {
                 this.context[key] = data[key]
             }
         }
+
+        // adds a way to manually trigger updates of all bindings that rely on a certain property (manual refresh)
+        var context = this.context
+        context._refresh = function(propertyName) {
+            context["_" + propertyName].refresh()
+        }
     }
 
     /*============= Context ==========================================================================================*/
@@ -247,6 +253,10 @@ var Circular = (function() {
         }
     }
 
+    Property.prototype.refresh = function() {
+        this.updateBindings(this.context, this.value, this.value)
+    }
+
     /*============= Bindings =========================================================================================*/
 
     function Binding(expression, element, evaluationContext) {
@@ -323,19 +333,34 @@ var Circular = (function() {
             var controller = new Controller(repeater, context)
 
             // initialize the values
-            var keys = Object.keys(collection[i])
-            for (var j = 0; j < keys.length; j++) {
-                var p = controller.context.getOrCreateProperty(keys[j])
-                var value = collection[i][keys[j]]
-                p.setValue(value)
+            if (typeof collection[i] == "object") {
+                var keys = Object.keys(collection[i])
+                for (var j = 0; j < keys.length; j++) {
+                    var p = controller.context.getOrCreateProperty(keys[j])
+                    var value = collection[i][keys[j]]
+                    p.setValue(value)
 
-                // create a binding that will update the value in the original collection, whenver the context
+                    // create a binding that will update the value in the original collection, whenever the context
+                    // property is updated
+                    var binding = (function(src, key) {
+                        return new FunctionBinding(function(context, oldValue, newValue) {
+                            src[key] = newValue
+                        })
+                    })(collection[i], keys[j])
+
+                    p.addBinding(binding)
+                }
+            } else {
+                var p = controller.context.getOrCreateProperty("item")
+                p.setValue(collection[i])
+
+                // create a binding that will update the value in the original collection, whenever the context
                 // property is updated
                 var binding = (function(src, key) {
                     return new FunctionBinding(function(context, oldValue, newValue) {
                         src[key] = newValue
                     })
-                })(collection[i], keys[j])
+                })(collection, i)
 
                 p.addBinding(binding)
             }
@@ -391,14 +416,20 @@ var Circular = (function() {
         // TODO: Refactor binding setups
         var elements = root.querySelectorAll("*[bind-content]")
         for (var i = 0; i < elements.length; i++) {
+            var initializeFromContent = true
             var exprText = elements[i].getAttribute("bind-content")
+            if (exprText == null || exprText == "") {
+                exprText = elements[i].innerHTML
+                initializeFromContent = false
+            }
+
             var expr = new BindingExpression(exprText)
             var binding = new ContentBinding(expr, elements[i])
             var controller = binding.attach()
 
             // if the content binding only references one symbol and has no prior definition,
             // just initialize it with the statically generated content of the element
-            if (expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
+            if (initializeFromContent && expr.symbols.length == 1 && controller.context[expr.symbols[0]] == undefined) {
                 var init = elements[i].innerHTML.trim()
 
                 // check if it's a number
@@ -638,7 +669,7 @@ var Circular = (function() {
 
     InputBinding.setup = function(root) {
         root = root || document
-        var elements = root.querySelectorAll("input[bind-input]")
+        var elements = root.querySelectorAll("*[bind-input]")
         for (var i = 0; i < elements.length; i++) {
             var elem = elements[i]
             var expr = elem.getAttribute("bind-input")
