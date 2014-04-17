@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Collection Bindings</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Verdana, sans-serif;
+            font-size: 18px;
+        }
+
+        body {
+            padding: 20px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        table {
+            width: 500px;
+        }
+
+        table td {
+            width: 50%;
+        }
+
+        table th {
+            text-align: left;
+            border-bottom: 1px solid black;
+        }
+
+        form table {
+            border-top: 1px solid #888;
+            margin-top: 5px;
+        }
+
+    </style>
+    <script src="../circular.js"></script>
+    <script>
+        Circular.controller("ShoppingListController", function() {
+            this.context = {
+                items: [
+                    { 'name': 'Milk', 'bought': false },
+                    { 'name': 'Bread', 'bought': false },
+                    { 'name': 'Eggs', 'bought': true }
+                ],
+                addItem: function() {
+                    //this.items = [{name: this.new_item, bought: false}].concat(this.items)
+                    var newitems = []
+                    for (var i = 0; i < this.items.length; i++) {
+                        newitems.push(this.items[i])
+                    }
+                    newitems.push({name: this.new_item, bought: false})
+
+                    this.items = newitems
+                    this.new_item = ""
+                    return false
+                }
+            }
+        })
+    </script>
+</head>
+<body controller="ShoppingListController">
+
+<h1>Shopping List</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Bought?</th>
+        </tr>
+    </thead>
+
+    <tbody bind-collection="items">
+        <tr>
+            <td bind-content="name"></td>
+            <td><input name="bought" type="checkbox" value="1" bind-attr="{checked: bought}" placeholder="New Item" bind-input></td>
+        </tr>
+    </tbody>
+
+</table>
+
+<form bind-submit="addItem()">
+<table>
+    <tr>
+        <td><input type="text" name="new_item" bind-input></td>
+        <td><input type="submit"></td>
+    </tr>
+</table>
+</form>
+
+
+</body>
+</html>

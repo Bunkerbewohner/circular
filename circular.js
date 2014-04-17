@@ -25,6 +25,8 @@
  */
 
 var Circular = (function() {
+    var controllerCount = 0;
+
     function Circular() {
         this.controllers = {}
         this.controllerInstances = {};
@@ -57,7 +59,7 @@ var Circular = (function() {
                 elements[i]._controller = new klass()
             else if (typeof klass == "object")
                 elements[i]._controller = new function() {
-                    this.context = result
+                    this.context = klass
                 }
             else
                 throw Error("invalid controller definition")
@@ -109,6 +111,12 @@ var Circular = (function() {
 
     function Controller(element, parentContext) {
         this.element = element
+
+
+        // every controller element needs an ID to unique identify it
+        if (element.id == "") {
+            element.id = "_controller-" + (controllerCount++);
+        }
 
         // check if the user defined constructor defined an initial context dictionary
         if (typeof this.context != "undefined" && Object.keys(this.context).length > 0) {
@@ -275,6 +283,18 @@ var Circular = (function() {
 
     //--
 
+    function FunctionBinding(func) {
+        Binding.call(this, "", null, undefined)
+        this.func = func
+    }
+    FunctionBinding.prototype = new Binding()
+
+    FunctionBinding.prototype.update = function(context, oldValue, newValue) {
+        this.func(context, oldValue, newValue)
+    }
+
+    //--
+
     function CollectionBinding(expression, element, evaluationContext) {
         Binding.call(this, expression, element, evaluationContext)
 
@@ -308,6 +328,16 @@ var Circular = (function() {
                 var p = controller.context.getOrCreateProperty(keys[j])
                 var value = collection[i][keys[j]]
                 p.setValue(value)
+
+                // create a binding that will update the value in the original collection, whenver the context
+                // property is updated
+                var binding = (function(src, key) {
+                    return new FunctionBinding(function(context, oldValue, newValue) {
+                        src[key] = newValue
+                    })
+                })(collection[i], keys[j])
+
+                p.addBinding(binding)
             }
 
             repeater._controller = controller
@@ -501,7 +531,9 @@ var Circular = (function() {
 
         if (element.tagName == "INPUT") {
             var inputType = element.type.toLowerCase()
-            this.arity = document.querySelectorAll("input[name='" + element.name + "']").length
+            var controllerId = findParentController(element).element.id
+            var query = "#" + controllerId + " " + element.tagName+"[name='"+element.name+"']"
+            this.arity = document.querySelectorAll(query).length
 
             // determine binding type based on input type
             switch (inputType) {
@@ -530,7 +562,9 @@ var Circular = (function() {
         if (this.type == "select" || this.type == "multi-select") {
             // look for the element and check it
             var value = this.expression.evaluate(context)
-            var elements = document.querySelectorAll(this.element.tagName+"[name='"+this.element.name+"']")
+            var controllerId = findParentController(this.element).element.id
+            var query = "#" + controllerId + " " + this.element.tagName+"[name='"+this.element.name+"']"
+            var elements = document.querySelectorAll(query)
             for (var i = 0; i < elements.length; i++) {
                 if (elements[i].value == value) {
                     elements[i].checked = true
@@ -585,7 +619,9 @@ var Circular = (function() {
         if (this.type == "toggle") {
             init = elem.checked
         } else if (this.type == "select") {
-            var elements = document.querySelectorAll("input[name='" + elem.name + "']")
+            var controllerId = findParentController(elem).element.id
+            var query = "#" + controllerId + " input[name='" + elem.name + "']"
+            var elements = document.querySelectorAll(query)
             for (var i = 0; i < elements.length; i++) {
                 if (elements[i].checked) {
                     init = elements[i].value
