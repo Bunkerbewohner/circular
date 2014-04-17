@@ -4,18 +4,12 @@
     <title>Basic Circular.js example</title>
     <script src="../circular.js"></script>
     <script>
-        Circular.controller("BodyCtrl", function() {
-            // empty controller
-        })
-
-        Circular.controller("ChildCtrl", function() {
-            this.context = {
-                age: 23
-            }
+        Circular.controller("ChildCtrl", {
+            age: 26
         })
     </script>
 </head>
-<body controller="BodyCtrl">
+<body>
     <!-- initialize the context from JSON object -->
     <script type="application/json">{
         "name": "Mathias"
@@ -23,10 +17,8 @@
 
     <h1>Basic Circular.js</h1>
 
-    <p>Hello, <span bind-content="name">World</span>!</p>
-
     <div controller="ChildCtrl">
-        <p>Your name is <span bind-content="name">...</span>, and you are <span bind-content="age">...</span> years old.</p>
+        <p>My name is <span bind-content="name">...</span>, and I am <span bind-content="age">...</span> years old.</p>
     </div>
 
 </body>

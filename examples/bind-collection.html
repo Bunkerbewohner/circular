@@ -39,25 +39,17 @@
     </style>
     <script src="../circular.js"></script>
     <script>
-        Circular.controller("ShoppingListController", function() {
-            this.context = {
-                items: [
-                    { 'name': 'Milk', 'bought': false },
-                    { 'name': 'Bread', 'bought': false },
-                    { 'name': 'Eggs', 'bought': true }
-                ],
-                addItem: function() {
-                    //this.items = [{name: this.new_item, bought: false}].concat(this.items)
-                    var newitems = []
-                    for (var i = 0; i < this.items.length; i++) {
-                        newitems.push(this.items[i])
-                    }
-                    newitems.push({name: this.new_item, bought: false})
-
-                    this.items = newitems
-                    this.new_item = ""
-                    return false
-                }
+        Circular.controller("ShoppingListController", {
+            items: [
+                { 'name': 'Milk', 'bought': false },
+                { 'name': 'Bread', 'bought': false },
+                { 'name': 'Eggs', 'bought': true }
+            ],
+            addItem: function() {
+                var add = {name: this.new_item, bought: false}
+                this.items = this.items.concat([add])
+                this.new_item = ""
+                return false
             }
         })
     </script>
