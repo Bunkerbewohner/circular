@@ -886,3 +886,9 @@ var Circular = (function() {
 
     return new Circular()
 })()
+
+if (typeof define === "function" && define.amd) {
+    define("circular", [], function () {
+        return Circular;
+    });
+}
