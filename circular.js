@@ -888,7 +888,7 @@ var Circular = (function() {
 })()
 
 if (typeof define === "function" && define.amd) {
-    define("circular", [], function () {
+    define(function () {
         return Circular;
     });
 }
