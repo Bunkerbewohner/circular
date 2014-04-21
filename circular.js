@@ -34,6 +34,45 @@ var Circular = (function() {
         document.addEventListener("DOMContentLoaded", this.init.bind(this))
     }
 
+    Circular.prototype.setupControllers = function(root) {
+        root = root || document
+
+        // initialize all the controllers
+        var elements = root.querySelectorAll("*[controller]")
+        for (var i = 0; i < elements.length; i++) {
+            // skip elements that were already initialized
+            if (elements[i].hasOwnProperty("_controller")) continue
+
+            // create a new controller (referenced by name in the "controller" attribute)
+            var name = elements[i].getAttribute("controller")
+            if (!(name in this.controllers)) throw new Error("Unknown controller '" + name + "'")
+
+            var klass = this.controllers[name]
+
+            if (typeof klass == "function")
+                elements[i]._controller = new klass()
+            else if (typeof klass == "object")
+                elements[i]._controller = new function () {
+                    this.context = klass
+                }
+            else
+                throw Error("invalid controller definition")
+
+            var parentController = findParentController(elements[i])
+            var parentContext = parentController != null ? parentController.context : this.rootController.context
+
+            Controller.call(elements[i]._controller, elements[i], parentContext)
+
+            // create a list for instances of this controller class
+            if (typeof this.controllerInstances[name] == "undefined") {
+                this.controllerInstances[name] = [];
+            }
+
+            // save this instance in the list
+            this.controllerInstances[name].push(elements[i]._controller)
+        }
+    }
+
     /**
      * Carries out all necessary initializations, such as:
      *  - setting up controllers
@@ -46,38 +85,13 @@ var Circular = (function() {
         this.rootController = html._controller
         this.rootController.initData()
 
-        // initialize all the controllers
-        var elements = document.querySelectorAll("*[controller]")
-        for (var i = 0; i < elements.length; i++) {
-            if (elements[i].hasOwnProperty("_controller")) continue
-            var name = elements[i].getAttribute("controller")
-            if (!(name in this.controllers)) throw new Error("Unknown controller '" + name + "'")
+        // scans for controllers and bindings to set them up
+        this.refresh(document)
+    }
 
-            var klass = this.controllers[name]
-
-            if (typeof klass == "function")
-                elements[i]._controller = new klass()
-            else if (typeof klass == "object")
-                elements[i]._controller = new function() {
-                    this.context = klass
-                }
-            else
-                throw Error("invalid controller definition")
-
-            var parentController = findParentController(elements[i])
-            var parentContext = parentController != null ? parentController.context : this.rootController.context
-
-            Controller.call(elements[i]._controller, elements[i], parentContext)
-
-            if (typeof this.controllerInstances[name] == "undefined") {
-                this.controllerInstances[name] = [];
-            }
-
-            this.controllerInstances[name].push(elements[i]._controller)
-        }
-
-        // initialize all bindings
-        this.setupBindings(document)
+    Circular.prototype.refresh = function(root) {
+        this.setupControllers(root)
+        this.setupBindings(root)
     }
 
     Circular.prototype.setupBindings = function(root) {
@@ -263,6 +277,10 @@ var Circular = (function() {
         this.element = element
         this.expression = expression
         this.evaluationContext = evaluationContext
+
+        if (element && !element.hasAttribute("_bound")) {
+            element.setAttribute("_bound", true)
+        }
     }
 
     Binding.prototype.getUpdateContext = function(updateContext) {
@@ -377,6 +395,7 @@ var Circular = (function() {
         var elements = root.querySelectorAll("*[bind-collection]")
         for (var i = 0; i < elements.length; i++) {
             var elem = elements[i]
+            if (elem.getAttribute("_bound")) continue // skip elements that are already bound
 
             var exprText = elements[i].getAttribute("bind-collection")
             var expr = new BindingExpression(exprText)
