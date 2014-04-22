@@ -28,7 +28,7 @@ Quick Start
 
 This chapter attempts to give a short overview over Circular and to use it. For more detailed information refer to the following chapters that explain the different concepts in detail.
 
-The basic blocks of Circular are **controllers** and **bindings**. Controllers are JavaScript objects that consist of data and functions. Data can be bound to HTML elements and functions can be bound to **actions** such as clicks and form submits.
+The basic blocks of Circular are **controllers** and **bindings**. Controllers are JavaScript objects that consist of data and functions. Data can be bound to HTML elements and attributes and functions can be bound both to **actions** such as clicks and form submits, as well as HTML elements and attributes.
 
 **Basic Controller Example**:
 
@@ -56,24 +56,26 @@ The following example shows how to make use of this controller in a simple HTML 
 		Circular.controller("MyController", {
 			name: "Joffrey",
 			alive: true,
+			showStatus: function() {
+				return this.alive ? "alive! : "dead!"
+			},
 			kill: function() {
 				this.alive = false
-			}
+			}			
 		})
 	</script>
 </head>
 <body controller="MyController">
-	<h1>King <span bind-content="name">...</span> is 
-		<span bind-content="(alive ? "alive!" : "dead!")">...</span></h1>
+	<h1>King <span bind-content="name"></span> is <span bind-content="showStatus()"></span></h1>
 
-	<button bind-click="kill()" bind-attr="{disabled: !alive}">Kill <span bind-content="name">...</span></button>
+	<button bind-click="kill()" bind-attr="{disabled: !alive}">Kill <span bind-content="name"></span></button>
 </body>
 </html>
 ```
 
 After including the circular library the controller is defined as shown earlier. In the HTML body **content bindings** between two *span* elements and the *name* property are created using the *bind-content* attribute. 
 
-The value of the attribute is a so called **binding expression**. Binding expressions are arbitrary JavaScript expressions that make use of data properties defined in the controller. Every time one of the referenced properties changes, the expression is automatically re-evaluated. How the new value is used depends on the kind of binding. The content binding in this case simply replaces the HTML elements' content (*innerHTML* property) with the new value. While in the first content binding the expression simply evaluates to the data property "name", the second binding uses JavaScript's ternary operator to return a string depending on the value of the data property "alive".
+The value of the attribute is a so called **binding expression**. Binding expressions are arbitrary JavaScript expressions that make use of data properties defined in the controller. Every time one of the referenced properties changes, the expression is automatically re-evaluated. How the new value is used depends on the kind of binding. The content binding in this case simply replaces the HTML elements' content (*innerHTML* property) with the new value. While in the first content binding the expression simply evaluates to the data property "name", the second binding uses a function defined in the controller to return a string depending on the value of the data property "alive".
 
 The other type of binding used in the example is the **attribute binding**. Attribute bindings allow binding values to arbitrary HTML attributes. In this case the binding is defined in form of a JavaScript object where the keys represent the attribute names and the values are the binding expressions. In this case the value of the attribute "disabled" is bound to the controller's data property "alive". Consequently the button will be disabled if "alive" is set to false. 
 
@@ -109,6 +111,35 @@ To access controller data and functions it has to be attached to a HTML element 
 Within the associated element all bindings refer to properties of the specified controller. If a referenced property's value is changed in some way the change will be automatically reflected in the HTML. 
 
 Circular automatically creates a **Root controller** that is attached to the HTML element of the document. If no other controller is specified all bindings will refer to the data context of that root controller.
+
+### Bound Functions
+
+Functions defined in the controller can not only be bound to actions, but also be used in regular content bindings etc. Each time a property referenced in the function is changed, the whole function will be reevaluated and the associated bindings are updated. For this to work the properties have to be explicitly referenced via "this":
+
+```html
+<!-- examples/usecase5.html -->
+<!doctype html>
+<html>
+<head>
+	<title>Function Binding</title>
+	<script src="circular.js"></script>
+    <script>
+        Circular.controller("Controller", {
+            greeting: function() {
+                // the property "name" is implicitly created through the input binding below
+                return "Hello, " + this.name + "!"
+            }
+        })
+    </script>
+</head>
+<body controller="Controller">
+    <p><input name="name" value="Margaret" bind-input></p>
+	<p bind-content="greeting()"></p>
+</body>
+</html>
+```
+
+Note that since binding expressions are regular JavaScript, you have to add parentheses to call the function as per normal. Every time the "name" property is changed, the "greeting" function will be evaluated newly and the bindings are updated with the resulting value (in this case "Hello, Margaret!"). Consequently changing the name in the input field will automatically update the greeting.
 
 ### Automatic Update of Bindings
 
@@ -155,6 +186,27 @@ Circular.controller("Test", {
 ```
 
 As demonstrated in the example binding updates are only triggered when the property value (which can be a reference) changes. Also data properties can be objects themselves and properties of objects can be access in binding expressions using the "." operator, e.g. ```meta.name```.
+
+Property updates can be manually triggered using ```Circular.refresh("propertyName")```. This will cause all bindings that depend on the specified property to be updated.
+
+**Function Bindings**
+
+Functions are re-evaluated when any data property referenced directly in their function body is updated. However, this currently does not include other controller functions called in the function body:
+
+```javascript
+Circular.controller("Controller", {
+	n: 4,
+	square: function() {
+		return n * n
+	},
+	quadruple: function() {
+		var nq = this.square()
+		return nq * nq
+	}
+}
+```
+
+In the example above changing the property "n" will lead to "square" being reevaluated, though "quadruple" is not. This is because the implementation simply checks for lexical references to data properties in the form of "this.$property". This will likely be improved in future versions of Circular.
 
 ### Explicit Context Initialization
 
@@ -250,7 +302,9 @@ Most of these bindings are **one-way** bindings. I.e. changes of the JavaScript 
 ```
 
 Content Bindings bind the values of data properties to the content of HTML elements. Every time the data property's value is changed the content of the HTML element will be changed accordingly.
-The attribute's value defines the data property whose content should be bound to the HTML elements content. If the property does not yet exist it is created automatically. If an existing property has no value, it will be initialized with the HTML elements content.
+The attribute's value refers to a data property by name. Its content is bound to the HTML element's content. 
+
+Content bindings support implicit context initialization: If a referenced property does not yet exist it is created automatically. If an existing property has no value, it will be initialized with the HTML elements content.
 
 If the HTML element's content is not needed for initialization the binding expression can also be defined in the content instead of the **bind-content** attribute value:
 
@@ -270,16 +324,63 @@ This example will result in the following HTML: ```<p>This is the initial descri
 <button bind-attr="{disabled: loading}" bind-click="loading = true">Submit</button>
 ```
 
-**TODO**
+Attribute bindings can be used to bind data properties to arbitrary attributes of an HTML element. By default the binding expression has to be a JSON object where each key represents an HTML attribute and the associated expression is evaluated to determine the HTML attribute's value.
+
+Of course functions can also be bound, as demonstrated in the following example:
+
+```html
+<!-- examples/usecase6.html -->
+<script>
+    Circular.controller("Controller", {
+        numRows: function() {
+            return Math.max(4, this.text.split("\n").length)
+        }
+    })
+</script>
+<form controller="Controller">
+	<textarea name="text" rows="4" cols="70" bind-attr="{rows: numRows()}" bind-input></textarea>
+</form>
+```
+
+In the example above the "rows" attribute of the textarea is bound to the function "numRows", which
+returns number of lines of the "text" property (but at least 4). The "text" property is bound to the textarea's content. As a result the textarea automatically grows larger when the user enters more than four lines of text. 
+
+Attribute bindings also support **implicit context initialization**:
+
+```html
+<html lang="en" bind-attribute="{lang: language}">
+```
+
+In the example above the "lang" attribute is bound to a not yet existing property "language". Through implicit context initialization the property is created in the root controller and initialized with the current value of the attribute ("en"). This is useful when the *lang* attribute is generated through server-side templating (like in WordPress) and you want to use the value in your JavaScript code.
 
 ### Style Binding
+
+```html
+<!-- examples/style-binding.html -->
+<div class="progress">
+    <!-- bind-style creates the property "progress" and binds the expression "progress + '%'" to the "width" style.
+         The property value is automatically initialized from the currently set style value.
+         Values with units such as %, em, pt, and px are automatically converted to numbers. -->
+    <div class="progress-bar" style="width: 50%" bind-style="{width: progress+'%'}">
+        &nbsp;Loading...
+     </div>
+</div>
+
+<!-- the buttons manipulate the implicitly created numeric progress property -->
+<button bind-click="progress -= 10">Dec</button>
+<button bind-click="progress += 10">Inc</button>
+```
+
+Style bindings work similarly to attribute bindings, except they bind to style attributes (i.e. attributes of the element's "style" property). Like content and attribute bindings, they support implicit initialization of properties. In the example above the property "progress" is initialized with the current value of the "width" style. For style attributes units are automatically stripped from initialization values. Therefore the initial value in the example is the numeric value 50, rather than the string "50%".  
+
+### Class Binding
 
 ```html
 <script type="application/json">{ "errors": [] }</script>
 <button bind-class="{warning: errors.length > 0}" bind-click="errors = ['ERROR']">Send Now</button>
 ```
 
-**TODO**
+Class bindings can be used to conditionally assign classes to an HTML element. The syntax is similar to attribute and style bindings, except the binding expressions are boolean and their value determines whether the class is assigned (true) or not (false). 
 
 ### Collection Binding
 
@@ -292,7 +393,9 @@ This example will result in the following HTML: ```<p>This is the initial descri
 </ul>
 ```
 
-**TODO**
+Collection bindings can be used to display lists. When a an array property is bound to an element (&lt;ul&gt; in the example), the first child element of that element (&lt;li&gt; in the example) will be repeated for every list item. Additionally a new controller will be created for every child element that holds the data of the array item. Within the child element (&lt;li&gt; in the example) the properties of the array item can be referenced in further bindings as per usual. If the array item is an atomic value, such as a number or string, it can be referenced by the name "item". When the JavaScript array is updated, the list is automatically updated. Refer to the chapter "Automatic Update of Bindings" to see how to update array properties correctly. 
+
+For an example of a collection binding using a list of JavaScript objects, see "examples/usecase2.html".
 
 ### Action Bindings
 
@@ -311,4 +414,4 @@ This example will result in the following HTML: ```<p>This is the initial descri
 </form>
 ```
 
-**TODO**
+Action bindings simply add controller functions as event listeners to certain events. Right now the only supported events are the **click** and **submit** events. The event is not passed directly to the function - instead it can be accessed through the internal property "_event".

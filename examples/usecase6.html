@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+    <title>Grow Textarea with Attribute Bindings</title>
+    <script src="../circular.js"></script>
+    <script>
+        Circular.controller("Controller", {
+            numRows: function() {
+                return Math.max(4, this.text.split("\n").length)
+            }
+        })
+    </script>
+</head>
+<body controller="Controller">
+<form action="send-tweet.php" method="POST">
+	<h1>Write a Tweet 2.0</h1>
+	<textarea name="text" rows="4" cols="70" bind-attr="{rows: numRows()}" bind-input></textarea>
+	<p>Remaining Characters: <span bind-content>140 - text.length</span></p>
+    <input type="submit" value="send">
+</form>
+</body>
+</html>

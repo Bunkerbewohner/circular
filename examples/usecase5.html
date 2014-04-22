@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+	<title>Function Binding</title>
+	<script src="../circular.js"></script>
+    <script>
+        Circular.controller("Controller", {
+            greeting: function() {
+                // the property "name" is implicitly created through the input binding below
+                return "Hello, " + this.name + "!"
+            }
+        })
+    </script>
+</head>
+<body controller="Controller">
+    <p><input name="name" value="Margaret" bind-input></p>
+	<p bind-content="greeting()"></p>
+</body>
+</html>
