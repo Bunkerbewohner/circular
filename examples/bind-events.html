@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>bind-event example</title>
+    <script src="../circular.js"></script>
+    <script>
+        Circular.controller("Main", {
+            isHover: false,
+            leftclick: function() {
+                if (this._event.button == 0) {
+                    alert("CLICK")
+                }
+            },
+            middleclick: function() {
+                if (this._event.button == 1) {
+                    alert("CLICK")
+                }
+            },
+            hover: function() {
+                this.isHover = true
+            },
+            hoverout: function() {
+                this.isHover = false
+            }
+        })
+    </script>
+    <style type="text/css">
+        button.active {
+            background-color: yellow;
+        }
+    </style>
+</head>
+<body controller="Main">
+
+<p>
+    <button bind-event="{click: leftclick()}">Reacts to Left Click</button>
+    <button bind-event="{click: middleclick()}">Reacts to Middle Click</button>
+    <button bind-event="{mouseover: hover(), mouseout: hoverout()}"
+            bind-class="{active: isHover}">Reacts to Hover</button>
+</p>
+
+</body>
+</html>

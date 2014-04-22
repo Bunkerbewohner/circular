@@ -414,4 +414,18 @@ For an example of a collection binding using a list of JavaScript objects, see "
 </form>
 ```
 
-Action bindings simply add controller functions as event listeners to certain events. Right now the only supported events are the **click** and **submit** events. The event is not passed directly to the function - instead it can be accessed through the internal property "_event".
+Action bindings simply add controller functions as event listeners to certain events. Right now the only
+events that have dedicated tags are the **click** and **submit** events. They can be used as shown in the example
+above with the tags "bind-click" and "bind-submit".
+
+All other events can be bound with the generic "bind-event" tag:
+
+```html
+<div bind-event="{mouseover: fadeIn(), mouseout: fadeOut()}">Some content</div>
+```
+
+Note that the "bind-event" tag expects a dictionary where the keys correspond to event names and the values are the associated binding expressions.
+
+The event is not passed directly to the controller function - instead it can be
+accessed through the internal property "_event".
+

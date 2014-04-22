@@ -1,5 +1,5 @@
 /**
- * circular.js 0.2.1
+ * circular.js 0.2.2
  *
  * The MIT License (MIT)
  *
@@ -804,6 +804,26 @@ var Circular = (function() {
         for (i = 0; i < elements.length; i++) {
             expr = new BindingExpression(elements[i].getAttribute("bind-submit"))
             action = new Action(expr, elements[i], "submit")
+        }
+
+        elements = root.querySelectorAll("*[bind-event]")
+        for (i = 0; i < elements.length; i++) {
+            var text = elements[i].getAttribute("bind-event")
+            if (text[0] != "{") {
+                console.log("INVALID EVENT BINDING (expected dictionary): " + text)
+            }
+
+            // parse dictionary of event bindings
+            text = text.replace(/:\s+(.*?)(,|\})/g, function(match, value, delim, offset, string) {
+                value = value.replace(/([^\\])"/g, "$1\\\"")
+                return ":\"" + value + "\"" + delim
+            })
+            var dict = eval("(" + text + ")")
+
+            for (key in dict) {
+                expr = new BindingExpression(dict[key])
+                action = new Action(expr, elements[i], key)
+            }
         }
     }
 
