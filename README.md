@@ -57,7 +57,7 @@ The following example shows how to make use of this controller in a simple HTML 
 			name: "Joffrey",
 			alive: true,
 			showStatus: function() {
-				return this.alive ? "alive! : "dead!"
+				return this.alive ? "alive!" : "dead!"
 			},
 			kill: function() {
 				this.alive = false
