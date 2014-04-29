@@ -830,6 +830,15 @@ var Circular = (function() {
     function Action(expression, element, event) {
         var ctrl = findParentController(element, true)
 
+        if (typeof element['_actions'] == "undefined") {
+            element['_actions'] = []
+        }
+
+        // allow each event only to be bound once
+        if (element['_actions'].indexOf(event) >= 0) {
+            return
+        }
+
         element.addEventListener(event, function(e) {
             ctrl.context._event = e
             if(!expression.evaluate(ctrl.context)) {
@@ -839,6 +848,9 @@ var Circular = (function() {
                 return true
             }
         }, false)
+
+        // remember that the event was registered
+        element['_actions'].push(event)
     }
 
     /*============= Binding expressions ==============================================================================*/
