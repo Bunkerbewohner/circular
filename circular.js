@@ -1,5 +1,5 @@
 /**
- * circular.js 0.2.5
+ * circular.js 0.2.6
  *
  * The MIT License (MIT)
  *
@@ -149,6 +149,9 @@ var Circular = (function() {
         } else {
             this.context = new Context(parentContext)
         }
+
+        // provide access to the element the controller was bound to
+        this.context._element = element
 
         Controller.prototype.initData.call(this)
     }
