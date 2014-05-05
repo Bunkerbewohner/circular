@@ -1,5 +1,5 @@
 /**
- * circular.js 0.2.4
+ * circular.js 0.2.5
  *
  * The MIT License (MIT)
  *
@@ -72,8 +72,9 @@ var Circular = (function() {
             this.controllerInstances[name].push(elements[i]._controller)
 
             // when everything's done call the _init method if it exists
-            if (elements[i]._controller.hasOwnProperty("_init")) {
-                elements[i]._controller._init();
+            var context = elements[i]._controller.context
+            if (context.hasOwnProperty("_init")) {
+                context._init();
             }
         }
     }
