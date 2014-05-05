@@ -1,5 +1,5 @@
 /**
- * circular.js 0.2.3
+ * circular.js 0.2.4
  *
  * The MIT License (MIT)
  *
@@ -70,6 +70,11 @@ var Circular = (function() {
 
             // save this instance in the list
             this.controllerInstances[name].push(elements[i]._controller)
+
+            // when everything's done call the _init method if it exists
+            if (elements[i]._controller.hasOwnProperty("_init")) {
+                elements[i]._controller._init();
+            }
         }
     }
 
