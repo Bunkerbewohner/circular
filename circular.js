@@ -1,5 +1,5 @@
 /**
- * circular.js 0.2.6
+ * circular.js 0.2.7
  *
  * The MIT License (MIT)
  *
@@ -144,7 +144,8 @@ var Circular = (function() {
             this.context = new Context(parentContext)
 
             for (key in init) {
-                this.context[key] = init[key]
+                // create new property and override existing inherited ones if exist
+                this.context.createProperty(key, init[key])
             }
         } else {
             this.context = new Context(parentContext)
@@ -168,7 +169,8 @@ var Circular = (function() {
                 console.log("Invalid JSON in " + text)
             }
             for (key in data) {
-                this.context[key] = data[key]
+                // create new property and override existing inherited ones if exist
+                this.context.createProperty(key, data[key])
             }
         }
 
@@ -195,7 +197,19 @@ var Circular = (function() {
             return this["_"+name]
         }
 
-        var p = new Property(this, name, name in this ? this[name] : undefined)
+        return this.createProperty(name)
+    }
+
+    /**
+     * Creates a new property. Will override existing inherited properties!
+     * @param name
+     * @param value
+     */
+    Context.prototype.createProperty = function(name, value) {
+        if (typeof value == "undefined") {
+            value = name in this ? this[name] : undefined
+        }
+        var p = new Property(this, name, value)
 
         // save it as a hidden property using the name prepended with underscore
         Object.defineProperty(this, "_"+name, {
